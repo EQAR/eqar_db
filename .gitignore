@@ -1,0 +1,6 @@
+*.pyc
+*.db
+*~
+/eqar_db/settings_local.py
+/env/
+!.gitignore
