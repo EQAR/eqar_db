@@ -1,8 +1,9 @@
 import ldap
+import os
 
 from pathlib import Path
 
-from django_auth_ldap.config import LDAPSearch, GroupOfNamesType
+from django_auth_ldap.config import LDAPSearch, PosixGroupType
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -61,11 +62,11 @@ AUTH_LDAP_GROUP_SEARCH = LDAPSearch(
     ldap.SCOPE_SUBTREE,
     '(objectClass=posixGroup)',
 )
-AUTH_LDAP_GROUP_TYPE = GroupOfNamesType(name_attr='cn')
+AUTH_LDAP_GROUP_TYPE = PosixGroupType()
 
 # Simple group restrictions
-AUTH_LDAP_REQUIRE_GROUP = 'cn=enabled,ou=django,ou=groups,dc=example,dc=com'
-AUTH_LDAP_DENY_GROUP = 'cn=disabled,ou=django,ou=groups,dc=example,dc=com'
+#AUTH_LDAP_REQUIRE_GROUP = 'cn=enabled,ou=django,ou=groups,dc=example,dc=com'
+#AUTH_LDAP_DENY_GROUP = 'cn=disabled,ou=django,ou=groups,dc=example,dc=com'
 
 # Populate the Django user from the LDAP directory.
 AUTH_LDAP_USER_ATTR_MAP = {
@@ -75,9 +76,15 @@ AUTH_LDAP_USER_ATTR_MAP = {
 }
 
 AUTH_LDAP_USER_FLAGS_BY_GROUP = {
-    'is_active': 'cn=active,ou=django,ou=groups,dc=example,dc=com',
-    'is_staff': 'cn=staff,ou=django,ou=groups,dc=example,dc=com',
-    'is_superuser': 'cn=superuser,ou=django,ou=groups,dc=example,dc=com',
+#    'is_active': 'cn=active,ou=django,ou=groups,dc=example,dc=com',
+    'is_staff': (
+        'cn=eqar,ou=users,dc=eqar,dc=eu',
+        'cn=externals,ou=users,dc=eqar,dc=eu',
+        'cn=eqarrc,ou=users,dc=eqar,dc=eu',
+        'cn=eqareb,ou=users,dc=eqar,dc=eu',
+        'cn=eqarac,ou=users,dc=eqar,dc=eu',
+    ),
+    'is_superuser': 'cn=eqar,ou=users,dc=eqar,dc=eu',
 }
 
 # This is the default, but I like to be explicit.
@@ -88,7 +95,7 @@ AUTH_LDAP_FIND_GROUP_PERMS = True
 
 # Cache distinguished names and group memberships for an hour to minimize
 # LDAP traffic.
-AUTH_LDAP_CACHE_TIMEOUT = 3600
+AUTH_LDAP_CACHE_TIMEOUT = 30
 
 # Keep ModelBackend around for per-user permissions and maybe a local
 # superuser.
@@ -129,6 +136,8 @@ DATABASES = {
     }
 }
 
+DEQAR_BASE = os.environ['DEQAR_BASE'] if 'DEQAR_BASE' in os.environ else None
+DEQAR_TOKEN = os.environ['DEQAR_TOKEN'] if 'DEQAR_TOKEN' in os.environ else None
 
 # Password validation
 # https://docs.djangoproject.com/en/3.1/ref/settings/#auth-password-validators

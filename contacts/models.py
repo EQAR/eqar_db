@@ -76,14 +76,21 @@ class Contact(models.Model):
     mtime = models.DateTimeField(auto_now=True)
     organisation = models.ManyToManyField('Organisation', through='ContactOrganisation')
 
+    @property
+    def person(self):
+        return '{} {}'.format(self.firstname, self.lastname) if self.firstname and self.lastname else self.firstname or self.lastname or 'NN'
+
+    @property
+    def fullname(self):
+        return self.person
+
     def __str__(self):
-        name = '{} {}'.format(self.firstname, self.lastname) if self.firstname and self.lastname else self.firstname or self.lastname or 'NN'
         if self.email:
-            return '{} <{}>'.format(name, self.email)
+            return '{} <{}>'.format(self.person, self.email)
         elif self.phone:
-            return '{} <tel:{}>'.format(name, self.phone)
+            return '{} <tel:{}>'.format(self.person, self.phone)
         else:
-            return '{} [no details]'.format(name)
+            return '{} [no details]'.format(self.person)
 
     class Meta:
         db_table = 'contact'

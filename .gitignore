@@ -2,5 +2,6 @@
 *.db
 *~
 /eqar_db/settings_local.py
+/agencies/deqarclient.py
 /env/
 !.gitignore
