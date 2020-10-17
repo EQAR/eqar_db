@@ -66,7 +66,7 @@ class Contact(models.Model):
     mobile = models.CharField(max_length=255, blank=True, null=True)
     brussels = models.BooleanField(default=False)
     postal = models.BooleanField(default=False)
-    pref_lang = models.ForeignKey(Language, on_delete=models.RESTRICT, db_column='prefLang')  # Field name made lowercase.
+    pref_lang = models.ForeignKey(Language, on_delete=models.RESTRICT, db_column='prefLang', default='en')  # Field name made lowercase.
     address_extension = models.CharField(db_column='addressExtension', max_length=255, blank=True, null=True)  # Field name made lowercase.
     address1 = models.CharField(max_length=255, blank=True, null=True)
     address2 = models.CharField(max_length=255, blank=True, null=True)

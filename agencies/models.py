@@ -1,4 +1,6 @@
 from django.db import models
+from django.template.defaultfilters import slugify
+
 from contacts.models import Organisation, Contact, OctopusAccount, Country, ContactOrganisation
 from eqar_db.custom_fields import EnumField
 
@@ -7,6 +9,8 @@ Agencies: everything related to registered agencies, applications, etc.
 """
 
 class RegisteredAgency(models.Model):
+    T_BASE_URL = 'https://data.deqar.eu/agency/'
+
     id = models.AutoField(primary_key=True, db_column='rid')
     organisation = models.OneToOneField(Organisation, on_delete=models.RESTRICT, db_column='oid', blank=True, null=True)
     octopus_account = models.OneToOneField(OctopusAccount, on_delete=models.RESTRICT, db_column='oaid', blank=True, null=True)
@@ -15,7 +19,6 @@ class RegisteredAgency(models.Model):
     web_contact = models.ForeignKey(Contact, on_delete=models.RESTRICT, db_column='webContact', blank=True, null=True, related_name='agency_web')  # Field name made lowercase.
     registered = models.BooleanField(default=False)
     deqar_id = models.IntegerField(db_column='deqarId', unique=True, blank=True, null=True)  # Field name made lowercase.
-    register_url = models.URLField(db_column='registerUrl', max_length=255, blank=True, null=True)  # Field name made lowercase.
     registered_since = models.DateField(db_column='registeredSince', blank=True, null=True)  # Field name made lowercase.
     valid_until = models.DateField(db_column='validUntil', blank=True, null=True)  # Field name made lowercase.
     base_country = models.ForeignKey(Country, on_delete=models.RESTRICT, db_column='baseCountry')  # Field name made lowercase.
@@ -25,6 +28,13 @@ class RegisteredAgency(models.Model):
 
     def __str__(self):
         return(self.shortname)
+
+    @property
+    def register_url(self):
+        return('{}{}'.format(self.T_BASE_URL, slugify('{0.deqar_id} {0.shortname}'.format(self))))
+
+    def get_absolute_url(self):
+        return(self.register_url)
 
     class Meta:
         db_table = 'registeredAgency'
