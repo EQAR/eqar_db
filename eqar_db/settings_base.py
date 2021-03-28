@@ -14,7 +14,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 ALLOWED_HOSTS = [
     'localhost',
-    'testing.eqar.eu'
+    'testing.int.eqar.eu',
+    'django.testzone.eqar.eu'
 ]
 
 
@@ -27,6 +28,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    'rest_framework',
+    'rest_framework.authtoken',
+    'django_filters',
+    'drf_yasg',
+
+    'uni_db',
 
     'contacts',
     'members',
@@ -44,7 +52,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-AUTH_LDAP_SERVER_URI = 'ldap://appsrv.eqar.eu/'
+AUTH_LDAP_SERVER_URI = 'ldap://ldap.int.eqar.eu/'
 
 AUTH_LDAP_BIND_DN = ''
 AUTH_LDAP_BIND_PASSWORD = ''
@@ -103,6 +111,24 @@ AUTHENTICATION_BACKENDS = [
     'django_auth_ldap.backend.LDAPBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'eqar_db.authentication.BearerAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer'
+    ),
+#    'DEFAULT_VERSIONING_CLASS': 'rest_framework.versioning.NamespaceVersioning',
+    'DEFAULT_PAGINATION_CLASS': 'uni_db.filters.SearchFacetPagination',
+    'PAGE_SIZE': 10,
+}
+
 
 ROOT_URLCONF = 'eqar_db.urls'
 
@@ -176,4 +202,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
 STATIC_URL = '/static/'
+
+STATICFILES_DIRS = [
+    BASE_DIR.parent / 'static'
+]
 

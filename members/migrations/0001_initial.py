@@ -2,7 +2,7 @@
 
 from django.db import migrations, models
 import django.db.models.deletion
-import eqar_db.custom_fields
+import uni_db.fields
 
 
 class Migration(migrations.Migration):
@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
             name='Member',
             fields=[
                 ('id', models.AutoField(db_column='mid', primary_key=True, serialize=False)),
-                ('cat', eqar_db.custom_fields.EnumField(choices=[('FOU', 'Founding'), ('SOP', 'Social Partner'), ('GOV', 'Governmental'), ('OBS', 'Observer')], default='FOU')),
+                ('cat', uni_db.fields.EnumField(choices=[('FOU', 'Founding'), ('SOP', 'Social Partner'), ('GOV', 'Governmental'), ('OBS', 'Observer')], default='FOU')),
                 ('name', models.CharField(blank=True, max_length=255, null=True)),
                 ('form_date', models.DateField(blank=True, db_column='formDate', null=True)),
                 ('signatory', models.CharField(blank=True, max_length=255, null=True)),

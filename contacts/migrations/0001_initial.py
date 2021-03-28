@@ -2,7 +2,7 @@
 
 from django.db import migrations, models
 import django.db.models.deletion
-import eqar_db.custom_fields
+import uni_db.fields
 
 
 class Migration(migrations.Migration):
@@ -124,7 +124,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(db_column='pid', primary_key=True, serialize=False)),
                 ('pic', models.IntegerField(blank=True, null=True)),
                 ('pic_name', models.CharField(blank=True, max_length=255, null=True)),
-                ('type', eqar_db.custom_fields.EnumField(choices=[('Coordinator', 'Coordinator'), ('Stakeholder Partner', 'Stakeholder Partner'), ('QAA Partner', 'QAA Partner'), ('Research Centre', 'Research Centre'), ('Associate Partner', 'Associate Partner')], default='Coordinator')),
+                ('type', uni_db.fields.EnumField(choices=[('Coordinator', 'Coordinator'), ('Stakeholder Partner', 'Stakeholder Partner'), ('QAA Partner', 'QAA Partner'), ('Research Centre', 'Research Centre'), ('Associate Partner', 'Associate Partner')], default='Coordinator')),
                 ('signatory_name', models.CharField(blank=True, max_length=255, null=True)),
                 ('expenditure', models.DecimalField(blank=True, decimal_places=2, max_digits=8, null=True)),
                 ('max_contrib', models.DecimalField(blank=True, decimal_places=2, max_digits=8, null=True)),
@@ -146,7 +146,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(db_column='pid', primary_key=True, serialize=False)),
                 ('pic', models.IntegerField(blank=True, null=True)),
-                ('type', eqar_db.custom_fields.EnumField(choices=[('Coordinator', 'Coordinator'), ('QAA', 'QAA'), ('ENIC-NARIC', 'ENIC-NARIC'), ('Associate', 'Associate'), ('Expert', 'Expert')], default='Coordinator')),
+                ('type', uni_db.fields.EnumField(choices=[('Coordinator', 'Coordinator'), ('QAA', 'QAA'), ('ENIC-NARIC', 'ENIC-NARIC'), ('Associate', 'Associate'), ('Expert', 'Expert')], default='Coordinator')),
                 ('notes', models.TextField(blank=True, null=True)),
                 ('mtime', models.DateTimeField(auto_now=True)),
                 ('contact_admin', models.ForeignKey(blank=True, db_column='contact_admin', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='deqar_connect_admin', to='contacts.contact')),

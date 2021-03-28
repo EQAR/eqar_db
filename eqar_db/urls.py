@@ -16,6 +16,13 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+from rest_framework import routers
+
+import uni_db.urls
+
+
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path(r'api/v3/', include(uni_db.urls)),
+    path(r'admin/', admin.site.urls),
 ]
+

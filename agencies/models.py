@@ -2,7 +2,7 @@ from django.db import models
 from django.template.defaultfilters import slugify
 
 from contacts.models import Organisation, Contact, OctopusAccount, Country, ContactOrganisation
-from eqar_db.custom_fields import EnumField
+from uni_db.fields import EnumField
 
 """
 Agencies: everything related to registered agencies, applications, etc.

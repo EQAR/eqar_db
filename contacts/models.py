@@ -1,12 +1,12 @@
 from django.db import models
-from eqar_db.custom_fields import EnumField
+from uni_db.fields import EnumField
 
 """
 Contacts: basic models for organisations, persons, etc.
 """
 
 class Language(models.Model):
-    code = models.CharField(primary_key=True, max_length=2)
+    code = models.CharField("Language code", primary_key=True, max_length=2)
     language = models.CharField(max_length=255, blank=True, null=True)
 
     def __str__(self):
@@ -18,7 +18,7 @@ class Language(models.Model):
 
 
 class Role(models.Model):
-    id = models.IntegerField(primary_key=True, db_column='rid')
+    id = models.IntegerField("Role ID", primary_key=True, db_column='rid')
     description = models.CharField(max_length=255, blank=True, null=True)
 
     def __str__(self):
@@ -30,50 +30,51 @@ class Role(models.Model):
 
 
 class Country(models.Model):
-    iso3 = models.CharField(primary_key=True, max_length=3)
-    iso2 = models.CharField(unique=True, max_length=2, blank=True, null=True)
-    longname = models.CharField(max_length=255, blank=True, null=True)
-    longname_local = models.CharField(max_length=255, blank=True, null=True)
-    name = models.CharField(max_length=255, blank=True, null=True)
-    name_local = models.CharField(max_length=255, blank=True, null=True)
-    tableau_name = models.CharField(max_length=255, blank=True, null=True)
-    infogram_name = models.CharField(max_length=255, blank=True, null=True)
+    iso3 = models.CharField("ISO 3-letter code", primary_key=True, max_length=3)
+    iso2 = models.CharField("ISO 2-letter code", unique=True, max_length=2, blank=True, null=True)
+    longname = models.CharField("Long name (English)", max_length=255, blank=True, null=True)
+    longname_local = models.CharField("Long name (local language)", max_length=255, blank=True, null=True)
+    name = models.CharField("Name (English)", max_length=255, blank=True, null=True)
+    name_local = models.CharField("Name (local language)", max_length=255, blank=True, null=True)
+    tableau_name = models.CharField("Name (for Tableau)", max_length=255, blank=True, null=True)
+    infogram_name = models.CharField("Name (for Infogram)", max_length=255, blank=True, null=True)
     capital = models.CharField(max_length=255, blank=True, null=True)
-    tldomain = models.CharField(max_length=2, blank=True, null=True)
+    tldomain = models.CharField("Top-level domain", max_length=2, blank=True, null=True)
     phone_prefix = models.CharField(max_length=5, blank=True, null=True)
     currency = models.CharField(max_length=3, blank=True, null=True)
-    ehea = models.IntegerField()
-    eu = models.IntegerField()
-    eter = models.IntegerField()
-    typo3boxdata = models.IntegerField(blank=True, null=True)
+    ehea = models.BooleanField("EHEA member", default=False)
+    eu = models.BooleanField("EU member", default=False)
+    eter = models.BooleanField("Covered by ETER", default=False)
+    typo3boxdata = models.IntegerField("Typo3 data", blank=True, null=True)
 
     def __str__(self):
         return('{} ({})'.format(self.name, self.iso2))
 
     class Meta:
         db_table = 'country'
+        verbose_name_plural = "Countries"
         ordering = [ 'name' ]
 
 
 class Contact(models.Model):
-    id = models.AutoField(primary_key=True, db_column='cid')
-    firstname = models.CharField(db_column='firstName', max_length=255, blank=True, null=True)  # Field name made lowercase.
-    lastname = models.CharField(db_column='lastName', max_length=255, blank=True, null=True)  # Field name made lowercase.
+    id = models.AutoField("Contact ID", primary_key=True, db_column='cid')
+    firstname = models.CharField("First name", db_column='firstName', max_length=255, blank=True, null=True)  # Field name made lowercase.
+    lastname = models.CharField("Last name", db_column='lastName', max_length=255, blank=True, null=True)  # Field name made lowercase.
     #person = models.CharField(max_length=255, editable=False)
     #name_email = models.CharField(db_column='nameEmail', max_length=255, editable=False)  # Field name made lowercase.
-    email = models.EmailField(unique=True, max_length=255, blank=True, null=True)
-    phone = models.CharField(max_length=255, blank=True, null=True)
-    mobile = models.CharField(max_length=255, blank=True, null=True)
-    brussels = models.BooleanField(default=False)
-    postal = models.BooleanField(default=False)
-    pref_lang = models.ForeignKey(Language, on_delete=models.RESTRICT, db_column='prefLang', default='en')  # Field name made lowercase.
-    address_extension = models.CharField(db_column='addressExtension', max_length=255, blank=True, null=True)  # Field name made lowercase.
-    address1 = models.CharField(max_length=255, blank=True, null=True)
+    email = models.EmailField("Email address", unique=True, max_length=255, blank=True, null=True)
+    phone = models.CharField("Phone (landline)", max_length=255, blank=True, null=True)
+    mobile = models.CharField("Phone (mobile)", max_length=255, blank=True, null=True)
+    brussels = models.BooleanField("Brussels-based", default=False)
+    postal = models.BooleanField("Receive paper mail", default=False)
+    pref_lang = models.ForeignKey(Language, on_delete=models.RESTRICT, db_column='prefLang', default='en', verbose_name="Language preference")  # Field name made lowercase.
+    address_extension = models.CharField("Address extension", db_column='addressExtension', max_length=255, blank=True, null=True)  # Field name made lowercase.
+    address1 = models.CharField(max_length=255, blank=True, null=True, help_text='Insert only if different from organisation!')
     address2 = models.CharField(max_length=255, blank=True, null=True)
     postcode = models.CharField(max_length=255, blank=True, null=True)
     city = models.CharField(max_length=255, blank=True, null=True)
     country = models.ForeignKey(Country, on_delete=models.RESTRICT, db_column='country', to_field='iso2', blank=True, null=True)
-    mtime = models.DateTimeField(auto_now=True)
+    mtime = models.DateTimeField("Last modified", auto_now=True)
     organisation = models.ManyToManyField('Organisation', through='ContactOrganisation')
 
     @property
