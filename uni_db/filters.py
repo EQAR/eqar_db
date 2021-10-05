@@ -42,9 +42,13 @@ class SearchFacetPagination(pagination.LimitOffsetPagination):
         no custom behaviour here, but we need QuerySet and View objects later on
         (they're not passed to the function we actually customise)
         """
-        self.qs = queryset
-        self.view = view
-        return(super().paginate_queryset(queryset, request, view))
+        if (request.accepted_renderer.media_type in [ 'text/csv' ]):
+            # this disables pagination when downloading
+            return(None)
+        else:
+            self.qs = queryset
+            self.view = view
+            return(super().paginate_queryset(queryset, request, view))
 
     def get_paginated_response(self, data):
         r = super().get_paginated_response(data) # data as original class returns it
@@ -52,9 +56,13 @@ class SearchFacetPagination(pagination.LimitOffsetPagination):
         if filterset_fields is not None:
             facets = { }
             for field in filterset_fields:
+                model_field = self.qs.model._meta.get_field(field)
                 facet = [ ]
                 for choice in self.qs.values(field).annotate(_count=Count(field)).order_by(field):
-                    facet.append((choice[field], choice['_count']))
+                    if model_field.is_relation and choice[field]:
+                        facet.append((choice[field], choice['_count'], model_field.related_model.objects.get(pk=choice[field]).__str__()))
+                    else:
+                        facet.append((choice[field], choice['_count']))
                 facets[field] = facet
             r.data['facets'] = facets   # augment by search facets
         return(r)

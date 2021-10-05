@@ -17,4 +17,8 @@ class ForeignKeyChoicesMetadata(SimpleMetadata):
                 }
                 for choice_value, choice_name in field.choices.items()
             ]
+        if isinstance(field, (RelatedField, ManyRelatedField)):
+            model_field = getattr(field.parent.Meta.model, field.source).field
+            field_info['foreign_table'] = model_field.related_model._meta.object_name.lower()
+            field_info['foreign_key'] = model_field.target_field.name
         return(field_info)

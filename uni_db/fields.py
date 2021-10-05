@@ -25,14 +25,22 @@ class EnumField(models.Field):
         if not all(isinstance(v, str) for v in self.values):
             raise ImproperlyConfigured("MySQL ENUM values should be strings")
 
-        if 'default' not in kwargs and ( ('null' not in kwargs) or not kwargs['null']):
-            """
+        # synchronise null option to blank option
+        if kwargs.get('blank', False):
+            kwargs['null'] = True
+        else:
+            kwargs.pop('null', None)
+
+        """
+        if 'default' not in kwargs and not kwargs.get('null', False):
                 If default is not set and field is not nullable, we need a default.
 
                 This corresponds to MariaDB behaviour, which is to use the first
                 option as default value.
-            """
             kwargs['default'] = self.values[0]
+        elif kwargs.get('null', False):
+            kwargs.pop('default', None)
+        """
 
         super(EnumField, self).__init__(*args, **kwargs)
 

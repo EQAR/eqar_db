@@ -26,6 +26,7 @@ class Role(models.Model):
 
     class Meta:
         db_table = 'role'
+        verbose_name = 'Organisation type'
         ordering = [ 'id' ]
 
 
@@ -96,6 +97,7 @@ class Contact(models.Model):
     class Meta:
         db_table = 'contact'
         ordering = [ 'lastname', 'firstname' ]
+        verbose_name = 'Person'
 
 
 class Organisation(models.Model):
@@ -137,6 +139,7 @@ class ContactOrganisation(models.Model):
         db_table = 'contact_organisation'
         unique_together = (('organisation', 'contact'),)
         ordering = [ 'function' ]
+        verbose_name = 'Contact person'
 
 
 class OctopusAccount(models.Model):
@@ -155,6 +158,7 @@ class OctopusAccount(models.Model):
 
     class Meta:
         db_table = 'octopusAccount'
+        verbose_name = 'Financial account'
 
 
 class DeqarConnectPartner(models.Model):
@@ -181,6 +185,7 @@ class DeqarConnectPartner(models.Model):
     class Meta:
         db_table = 'deqarConnectPartner'
         ordering = [ 'id' ]
+        verbose_name = 'DEQAR CONNECT partner'
 
 
 class DeqarPartner(models.Model):
@@ -213,5 +218,5 @@ class DeqarPartner(models.Model):
     class Meta:
         db_table = 'deqarPartner'
         ordering = [ 'id' ]
-
+        verbose_name = 'DEQAR project partner'
 

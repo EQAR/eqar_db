@@ -106,9 +106,9 @@ class Applications(models.Model):
 
     id = models.AutoField(primary_key=True, db_column='aid')
     agency = models.ForeignKey(RegisteredAgency, on_delete=models.RESTRICT, db_column='rid')
-    submit_date = models.DateField(db_column='submitDate', blank=True, null=True)  # Field name made lowercase.
-    type = EnumField(choices=TYPE_CHOICES)
-    stage = EnumField(choices=STAGE_CHOICES)
+    submit_date = models.DateField(db_column='submitDate', blank=False, null=False)  # Field name made lowercase.
+    type = EnumField(choices=TYPE_CHOICES, blank=False)
+    stage = EnumField(choices=STAGE_CHOICES, blank=False)
     eligibility_date = models.DateField(db_column='eligibilityDate', blank=True, null=True)  # Field name made lowercase.
     report_expected = models.DateField(db_column='reportExpected', blank=True, null=True)  # Field name made lowercase.
     report_date = models.DateField(db_column='reportDate', blank=True, null=True)  # Field name made lowercase.
@@ -162,7 +162,6 @@ class Applications(models.Model):
     result = EnumField(choices=RESULT_CHOICES, blank=True, null=True)
     decision_date = models.DateField(db_column='decisionDate', blank=True, null=True)  # Field name made lowercase.
     comment = models.TextField(blank=True, null=True)
-    #select_name = models.CharField(db_column='selectName', editable=False, max_length=255)  # Field name made lowercase.
     mtime = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -183,7 +182,7 @@ class ApplicationClarification(models.Model):
 
     id = models.AutoField(primary_key=True, db_column='acid')
     application = models.ForeignKey(Applications, on_delete=models.CASCADE, db_column='aid')
-    type = EnumField(choices=TYPE_CHOICES)
+    type = EnumField(choices=TYPE_CHOICES, blank=False)
     sent_on = models.DateField(db_column='sentOn', blank=True, null=True)  # Field name made lowercase.
     reply_on = models.DateField(db_column='replyOn', blank=True, null=True)  # Field name made lowercase.
     recipient_org = models.ForeignKey(Organisation, on_delete=models.RESTRICT, db_column='recipientOrg', blank=True, null=True)  # Field name made lowercase.
@@ -237,7 +236,7 @@ class ApplicationRole(models.Model):
     id = models.AutoField(primary_key=True, db_column='arid')
     application = models.ForeignKey(Applications, on_delete=models.CASCADE, db_column='aid')
     contact = models.ForeignKey(Contact, on_delete=models.RESTRICT, db_column='cid')
-    role = EnumField(choices=ROLE_CHOICES)
+    role = EnumField(choices=ROLE_CHOICES, blank=False)
     notes = models.TextField(blank=True, null=True)
     mtime = models.DateTimeField(auto_now=True)
 
@@ -264,14 +263,13 @@ class ChangeReport(models.Model):
     id = models.AutoField(primary_key=True, db_column='crid')
     agency = models.ForeignKey(RegisteredAgency, models.DO_NOTHING, db_column='rid')
     submit_date = models.DateField(db_column='submitDate', blank=True, null=True)  # Field name made lowercase.
-    stage = EnumField(choices=STAGE_CHOICES)
+    stage = EnumField(choices=STAGE_CHOICES, blank=False)
     rapporteur1 = models.ForeignKey(Contact, models.DO_NOTHING, db_column='rapporteur1', blank=True, null=True, related_name='change_report_rapporteur1')
     rapporteur2 = models.ForeignKey(Contact, models.DO_NOTHING, db_column='rapporteur2', blank=True, null=True, related_name='change_report_rapporteur2')
     secretary = models.ForeignKey(Contact, models.DO_NOTHING, db_column='secretary', blank=True, null=True, related_name='change_report_secretary')
     result = EnumField(choices=RESULT_CHOICES, blank=True, null=True)
     decision_date = models.DateField(db_column='decisionDate', blank=True, null=True)  # Field name made lowercase.
     comment = models.TextField(blank=True, null=True)
-    #select_name = models.CharField(db_column='selectName', editable=False, max_length=255)  # Field name made lowercase.
     mtime = models.DateTimeField(auto_now=True)
 
     class Meta:

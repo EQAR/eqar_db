@@ -1,42 +1,48 @@
 from rest_framework import viewsets, permissions
 
-from uni_db.views import ModelViewSet
+from uni_db.views import ModelViewSet, UniModelViewSet
 
-from contacts.models import Organisation, Role, Country, Contact, Language
-from contacts.serializers import \
-    OrganisationSerializer, OrganisationListSerializer, \
-    CountrySerializer, CountryListSerializer, \
-    ContactSerializer, ContactListSerializer, \
-    RoleSerializer, \
-    LanguageSerializer
+from contacts.models import *
 
-class ContactViewSet(ModelViewSet):
+class ContactViewSet(UniModelViewSet):
     queryset = Contact.objects.all()
-    list_serializer_class = ContactListSerializer
-    read_serializer_class = ContactSerializer
-    write_serializer_class = ContactSerializer
+    list_fields = [ 'lastname', 'firstname', 'email', 'phone', 'mobile' ]
 
-class OrganisationViewSet(ModelViewSet):
+class OrganisationViewSet(UniModelViewSet):
     queryset = Organisation.objects.all()
-    list_serializer_class = OrganisationListSerializer
-    read_serializer_class = OrganisationSerializer
-    write_serializer_class = OrganisationSerializer
+    list_fields = [ 'acronym', 'longname', 'city', 'country' ]
 
-class RoleViewSet(ModelViewSet):
-    queryset = Role.objects.all()
-    #list_serializer_class = RoleListSerializer
-    read_serializer_class = RoleSerializer
-    write_serializer_class = RoleSerializer
+class ContactOrganisationViewSet(UniModelViewSet):
+    queryset = ContactOrganisation.objects.all()
+    list_fields = [ 'contact', 'organisation', 'sendofficial', 'senddeqar', 'sendinvoice' ]
+    filterset_fields = [ 'contact', 'organisation', 'sendofficial', 'senddeqar' ]
+    search_fields = [ 'contact', 'organisation__longname', 'organisation__acronym' ]
 
-class CountryViewSet(ModelViewSet):
+class OctopusAccountViewSet(UniModelViewSet):
+    queryset = OctopusAccount.objects.all()
+    list_fields = [ 'organisation', 'octopus_id', 'client', 'supplier' ]
+
+class DeqarConnectPartnerViewSet(UniModelViewSet):
+    queryset = DeqarConnectPartner.objects.all()
+    list_fields = [ 'organisation', 'type', 'pic', 'contact_technical', 'contact_admin' ]
+
+class DeqarPartnerViewSet(UniModelViewSet):
+    queryset = DeqarPartner.objects.all()
+    list_fields = [ 'organisation', 'type', 'pic', 'technician', 'manager' ]
+
+class CountryViewSet(UniModelViewSet):
     queryset = Country.objects.all()
-    list_serializer_class = CountryListSerializer
-    read_serializer_class = CountrySerializer
-    write_serializer_class = CountrySerializer
+    list_fields = [ 'name', 'capital', 'ehea', 'eu', 'iso3', 'iso2' ]
+    filterset_fields = [ 'ehea', 'eu', 'eter' ]
+    search_fields = [ 'longname', 'longname_local', 'name', 'name_local', 'capital' ]
+    unidb_options = { 'delete': False }
+    relations_count = ('organisation_set', 'registeredagency_set', 'contact_set', 'agencyupdate_set')
 
-class LanguageViewSet(ModelViewSet):
+class LanguageViewSet(UniModelViewSet):
     queryset = Language.objects.all()
-    #list_serializer_class = LanguageListSerializer
-    read_serializer_class = LanguageSerializer
-    write_serializer_class = LanguageSerializer
+    unidb_options = { 'delete': False, 'update': False }
+
+class RoleViewSet(UniModelViewSet):
+    queryset = Role.objects.all()
+    unidb_options = { 'readonly': True }
 
