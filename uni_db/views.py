@@ -3,7 +3,7 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from uni_db.metadata import ForeignKeyChoicesMetadata
+from uni_db.metadata import ExtendedMetadata
 from uni_db.mixins import ReadWriteSerializerMixin
 from uni_db.filters import FilterBackend
 from uni_db.serializers import ListSerializer, DetailSerializer
@@ -13,9 +13,18 @@ class ModelViewSet(ReadWriteSerializerMixin, viewsets.ModelViewSet):
     adapted ModelViewSet class with some defaults
     """
 
-    metadata_class = ForeignKeyChoicesMetadata
+    metadata_class = ExtendedMetadata
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [FilterBackend, SearchFilter, OrderingFilter]
+
+    def get_field_order(self):
+        return [ i.name for i in self.get_queryset().model._meta.fields ]
+
+    def get_renderer_context(self):
+        context = super().get_renderer_context()
+        context['header'] = self.get_field_order()
+        return context
+
 
 class UniModelViewSet(ModelViewSet):
     """

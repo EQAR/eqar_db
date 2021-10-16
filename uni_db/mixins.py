@@ -63,8 +63,3 @@ class ReadWriteSerializerMixin(object):
         )
         return self.write_serializer_class
 
-    def get_renderer_context(self):
-        context = super().get_renderer_context()
-        context['header'] = [ i.name for i in self.get_queryset().model._meta.fields ]
-        return context
-
