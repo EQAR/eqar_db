@@ -7,16 +7,18 @@ from contacts.models import *
 class ContactViewSet(UniModelViewSet):
     queryset = Contact.objects.all()
     list_fields = [ 'lastname', 'firstname', 'email', 'phone', 'mobile' ]
+    search_fields = [ 'lastname', 'firstname', 'email', 'phone', 'mobile' ]
 
 class OrganisationViewSet(UniModelViewSet):
     queryset = Organisation.objects.all()
-    list_fields = [ 'acronym', 'longname', 'city', 'country' ]
+    list_fields = [ 'acronym', 'longname', 'role', 'city', 'country' ]
+    search_fields = [ 'acronym', 'longname', 'city', 'country__name', 'postcode' ]
+    filterset_fields = [ 'role', 'city', 'country' ]
 
 class ContactOrganisationViewSet(UniModelViewSet):
     queryset = ContactOrganisation.objects.all()
     list_fields = [ 'contact', 'organisation', 'sendofficial', 'senddeqar', 'sendinvoice' ]
     filterset_fields = [ 'contact', 'organisation', 'sendofficial', 'senddeqar' ]
-    search_fields = [ 'contact', 'organisation__longname', 'organisation__acronym' ]
 
 class OctopusAccountViewSet(UniModelViewSet):
     queryset = OctopusAccount.objects.all()
@@ -25,10 +27,12 @@ class OctopusAccountViewSet(UniModelViewSet):
 class DeqarConnectPartnerViewSet(UniModelViewSet):
     queryset = DeqarConnectPartner.objects.all()
     list_fields = [ 'organisation', 'type', 'pic', 'contact_technical', 'contact_admin' ]
+    filterset_fields = [ 'type' ]
 
 class DeqarPartnerViewSet(UniModelViewSet):
     queryset = DeqarPartner.objects.all()
     list_fields = [ 'organisation', 'type', 'pic', 'technician', 'manager' ]
+    filterset_fields = [ 'type' ]
 
 class CountryViewSet(UniModelViewSet):
     queryset = Country.objects.all()

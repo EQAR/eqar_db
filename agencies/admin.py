@@ -13,7 +13,7 @@ class RoleInline(admin.TabularInline):
 
 class ClarificationInline(admin.StackedInline):
     model = ApplicationClarification
-    autocomplete_fields = [ 'recipient_org', 'recipient_contact' ]
+    autocomplete_fields = [ 'recipientOrg', 'recipientContact' ]
     extra = 0
     readonly_fields = [ 'mtime' ]
 
@@ -58,8 +58,8 @@ class ApplicationAdminForm(forms.ModelForm):
 @admin.register(Applications)
 class ApplicationAdmin(admin.ModelAdmin):
     form = ApplicationAdminForm
-    list_display = [ 'id', 'agency', 'type', 'submit_date', 'stage', 'result' ]
-    list_filter = [ 'type', 'submit_date', 'stage', 'result' ]
+    list_display = [ 'id', 'agency', 'type', 'submitDate', 'stage', 'result' ]
+    list_filter = [ 'type', 'submitDate', 'stage', 'result' ]
     search_fields = [ 'agency__shortname', 'agency__organisation__longname' ]
     inlines = [RoleInline, InterestInline, ClarificationInline]
     readonly_fields = [ 'mtime' ]
@@ -73,22 +73,22 @@ class UpdateAdmin(admin.ModelAdmin):
 
 @admin.register(RegisteredAgency)
 class AgencyAdmin(admin.ModelAdmin):
-    list_display = [ 'shortname', 'deqar_id', 'base_country', 'registered', 'registered_since', 'valid_until' ]
-    list_filter = [ 'registered', 'registered_since', 'valid_until' ]
-    search_fields = [ 'shortname', 'organisation__longname', 'base_country__name', 'base_country__iso2', 'base_country__iso3' ]
+    list_display = [ 'shortname', 'deqarId', 'baseCountry', 'registered', 'registeredSince', 'validUntil' ]
+    list_filter = [ 'registered', 'registeredSince', 'validUntil' ]
+    search_fields = [ 'shortname', 'organisation__longname', 'baseCountry__name', 'baseCountry__iso2', 'baseCountry__iso3' ]
     readonly_fields = [ 'register_url', 'mtime' ]
 
 @admin.register(ChangeReport)
 class ChangeReportAdmin(admin.ModelAdmin):
-    list_display = [ 'id', 'agency', 'submit_date', 'stage', 'result' ]
-    list_filter = [ 'submit_date', 'stage', 'result' ]
+    list_display = [ 'id', 'agency', 'submitDate', 'stage', 'result' ]
+    list_filter = [ 'submitDate', 'stage', 'result' ]
     search_fields = [ 'agency__shortname', 'agency__organisation__longname' ]
     readonly_fields = [ 'mtime' ]
 
 @admin.register(Complaint)
 class ComplaintAdmin(admin.ModelAdmin):
-    list_display = [ 'id', 'agency', 'submit_date', 'stage', 'result' ]
-    list_filter = [ 'submit_date', 'stage', 'result' ]
+    list_display = [ 'id', 'agency', 'submitDate', 'stage', 'result' ]
+    list_filter = [ 'submitDate', 'stage', 'result' ]
     search_fields = [ 'agency__shortname', 'agency__organisation__longname' ]
     readonly_fields = [ 'mtime' ]
 
