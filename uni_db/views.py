@@ -33,8 +33,15 @@ class UniModelViewSet(ModelViewSet):
 
     @action(detail=True, methods=['get'])
     def nested(self, request, pk=None):
-        obj = self.get_nested_serializer_class()(self.queryset.get(pk=pk))
-        return Response(obj.data)
+        obj = self.queryset.get(pk=pk)
+        serializer = self.get_nested_serializer_class()
+        return Response(serializer(obj).data)
+
+    @action(detail=False, methods=['get'])
+    def select(self, request):
+        results = self.filter_queryset(self.queryset)
+        serializer = self.get_search_serializer_class()
+        return Response(serializer(results, many=True).data)
 
     def _make_serializer_class(self, baseclass, ref_name, details):
 
@@ -61,6 +68,11 @@ class UniModelViewSet(ModelViewSet):
 
     def get_list_serializer_class(self):
         return(self._make_serializer_class(ListSerializer, 'list', False))
+
+    def get_search_serializer_class(self):
+        _SearchSerializer = self._make_serializer_class(ListSerializer, 'search', False)
+        _SearchSerializer.Meta.fields = [ '_label' ]
+        return(_SearchSerializer)
 
     def get_download_serializer_class(self):
         return(self._make_serializer_class(ListSerializer, 'download', True))
