@@ -60,7 +60,9 @@ class SearchFacetPagination(pagination.LimitOffsetPagination):
                 facet = [ ]
                 for choice in self.qs.values(field).annotate(_count=Count(field)).order_by(field):
                     if model_field.is_relation and choice[field]:
-                        facet.append((choice[field], choice['_count'], model_field.related_model.objects.get(pk=choice[field]).__str__()))
+                        kwargs = {}
+                        kwargs[model_field.target_field.name] = choice[field]
+                        facet.append((choice[field], choice['_count'], model_field.related_model.objects.get(**kwargs).__str__()))
                     else:
                         facet.append((choice[field], choice['_count']))
                 facets[field] = facet
