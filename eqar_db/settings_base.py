@@ -163,8 +163,12 @@ DATABASES = {
     }
 }
 
+# DEQAR URL and token to be set in environment
 DEQAR_BASE = os.environ['DEQAR_BASE'] if 'DEQAR_BASE' in os.environ else None
 DEQAR_TOKEN = os.environ['DEQAR_TOKEN'] if 'DEQAR_TOKEN' in os.environ else None
+
+# application title
+UNI_DB_TITLE = "EQAR database - TEST"
 
 # Password validation
 # https://docs.djangoproject.com/en/3.1/ref/settings/#auth-password-validators

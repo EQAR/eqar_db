@@ -3,6 +3,7 @@ import re
 from django.urls import path, include
 from django.contrib import auth
 from django.db import connection
+from django.conf import settings
 
 from rest_framework import status, generics, views, viewsets, permissions, routers, serializers
 from rest_framework.response import Response
@@ -127,16 +128,18 @@ class UniDB:
                     else:
                         list_serializer_class = viewset().get_serializer_class()
                     list_serializer = list_serializer_class()
+                    def capitalize_first(text):
+                        return(text[0].upper() + text[1:])
                     tables[slug] = dict(
                         name=slug,
-                        description=viewset().get_queryset().model._meta.verbose_name_plural,
+                        description=capitalize_first(viewset().get_queryset().model._meta.verbose_name_plural),
                         section='table',
                         priKey=viewset().get_queryset().model._meta.pk.name,
                         searchable=hasattr(viewset, 'search_fields'),
                         underlyingTable=None,
                         columns={ i: list_serializer.fields[i].label for i in list_serializer.fields },
                     )
-                    options = getattr(viewset, 'unidb_options') if hasattr(viewset, 'unidb_options') else { }
+                    options = getattr(viewset, 'unidb_options', {})
                     tables[slug]['hidden'] = options.get('hidden', False)
                     tables[slug]['includeGlobalSearch'] = options.get('includeGlobalSearch', True)
                     if options.get('readonly', False):
@@ -149,8 +152,8 @@ class UniDB:
                         tables[slug]['allowDelete'] = options.get('delete', True)
 
                 return Response(dict(
-                    UniDB_motd='Connected: TEST TEST',
-                    uiconfig=dict(pagetitle='EQAR DB TEST', cuttext=60, pagesize=SearchFacetPagination.default_limit),
+                    UniDB_motd=f'Connected: {settings.UNI_DB_TITLE}',
+                    uiconfig=dict(pagetitle=settings.UNI_DB_TITLE, cuttext=60, pagesize=SearchFacetPagination.default_limit),
                     tables=tables
                 ), status=status.HTTP_200_OK)
 
