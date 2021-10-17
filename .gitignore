@@ -1,7 +1,8 @@
 *.pyc
 *.db
 *~
-/eqar_db/settings_local.py
-/agencies/deqarclient.py
+/api/eqar_db/settings_local.py
+/api/agencies/deqarclient.py
 /env/
+.env
 !.gitignore

@@ -10,6 +10,7 @@ from corsheaders.defaults import default_headers
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
@@ -167,14 +168,16 @@ WSGI_APPLICATION = 'eqar_db.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'HOST': '/var/run/mysqld/mysqld.sock',
-        'NAME': 'eqar',
+        'HOST': os.environ.get('DJANGO_DB_HOST', '/var/run/mysqld/mysqld.sock'),
+        'NAME': os.environ.get('DJANGO_DB_NAME', 'eqar'),
+        'USER': os.environ.get('DJANGO_DB_USER', 'eqar'),
+        'PASSWORD': os.environ.get('DJANGO_DB_PASS'),
     }
 }
 
 # DEQAR URL and token to be set in environment
-DEQAR_BASE = os.environ['DEQAR_BASE'] if 'DEQAR_BASE' in os.environ else None
-DEQAR_TOKEN = os.environ['DEQAR_TOKEN'] if 'DEQAR_TOKEN' in os.environ else None
+DEQAR_BASE = os.environ.get('DEQAR_BASE')
+DEQAR_TOKEN = os.environ.get('DEQAR_TOKEN')
 
 # application title
 UNI_DB_TITLE = "EQAR database - TEST"
