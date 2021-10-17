@@ -78,7 +78,7 @@ Main admin modules
 @admin.register(Contact)
 class ContactAdmin(admin.ModelAdmin):
     inlines = [ContactOrganisationInline]
-    search_fields = [ 'firstname', 'lastname', 'email' ]
+    search_fields = [ 'firstName', 'lastName', 'email' ]
     readonly_fields = [ 'mtime' ]
 
 @admin.register(Organisation)

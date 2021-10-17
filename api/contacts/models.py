@@ -59,17 +59,15 @@ class Country(models.Model):
 
 class Contact(models.Model):
     id = models.AutoField("Contact ID", primary_key=True, db_column='cid')
-    firstname = models.CharField("first name", db_column='firstName', max_length=255, blank=True, null=True)  # Field name made lowercase.
-    lastname = models.CharField("last name", db_column='lastName', max_length=255, blank=True, null=True)  # Field name made lowercase.
-    #person = models.CharField(max_length=255, editable=False)
-    #name_email = models.CharField(db_column='nameEmail', max_length=255, editable=False)  # Field name made lowercase.
+    firstName = models.CharField("first name", db_column='firstName', max_length=255, blank=True, null=True)
+    lastName = models.CharField("last name", db_column='lastName', max_length=255, blank=True, null=True)
     email = models.EmailField("email address", unique=True, max_length=255, blank=True, null=True)
     phone = models.CharField("phone (landline)", max_length=255, blank=True, null=True)
     mobile = models.CharField("phone (mobile)", max_length=255, blank=True, null=True)
     brussels = models.BooleanField("Brussels-based", default=False)
     postal = models.BooleanField("receive paper mail", default=False)
-    pref_lang = models.ForeignKey(Language, on_delete=models.RESTRICT, db_column='prefLang', default='en', verbose_name="language preference")  # Field name made lowercase.
-    address_extension = models.CharField("address extension", db_column='addressExtension', max_length=255, blank=True, null=True)  # Field name made lowercase.
+    prefLang = models.ForeignKey(Language, on_delete=models.RESTRICT, db_column='prefLang', default='en', verbose_name="language preference")
+    addressExtension = models.CharField("address extension", db_column='addressExtension', max_length=255, blank=True, null=True)
     address1 = models.CharField(max_length=255, blank=True, null=True, help_text='Insert only if different from organisation!')
     address2 = models.CharField(max_length=255, blank=True, null=True)
     postcode = models.CharField(max_length=255, blank=True, null=True)
@@ -80,11 +78,11 @@ class Contact(models.Model):
 
     @property
     def person(self):
-        return '{} {}'.format(self.firstname, self.lastname) if self.firstname and self.lastname else self.firstname or self.lastname or 'NN'
+        return '{} {}'.format(self.firstName, self.lastName) if self.firstName and self.lastName else self.firstName or self.lastName or 'NN'
 
     @property
-    def fullname(self):
-        return self.person
+    def nameEmail(self):
+        return str(self)
 
     def __str__(self):
         if self.email:
@@ -96,7 +94,7 @@ class Contact(models.Model):
 
     class Meta:
         db_table = 'contact'
-        ordering = [ 'lastname', 'firstname' ]
+        ordering = [ 'lastName', 'firstName' ]
         verbose_name = 'person'
 
 
@@ -104,8 +102,6 @@ class Organisation(models.Model):
     id = models.AutoField("Organisation ID", primary_key=True, db_column='oid')
     longname = models.CharField("Name", max_length=255, blank=True, null=True)
     acronym = models.CharField("Acronym", max_length=15, blank=True, null=True)
-    #name = models.CharField(max_length=255, editable=False)
-    #alt_name = models.CharField(max_length=255, editable=False)
     role = models.ForeignKey('Role', models.DO_NOTHING, db_column='role')
     address1 = models.CharField("Address", max_length=255, blank=True, null=True)
     address2 = models.CharField("Address (2)", max_length=255, blank=True, null=True)
@@ -117,6 +113,14 @@ class Organisation(models.Model):
     def __str__(self):
         return('{} ({})'.format(self.longname, self.acronym) if self.acronym and self.longname else self.longname or self.acronym)
 
+    @property
+    def name(self):
+        return(f'{self.acronym} - {self.longname}' if self.acronym and self.longname else self.longname or self.acronym)
+
+    @property
+    def alt_name(self):
+        return(str(self))
+
     class Meta:
         db_table = 'organisation'
         ordering = [ 'longname' ]
@@ -126,9 +130,9 @@ class ContactOrganisation(models.Model):
     id = models.AutoField("ID", primary_key=True, db_column='coid')
     contact = models.ForeignKey(Contact, on_delete=models.RESTRICT, db_column='cid')
     organisation = models.ForeignKey(Organisation, on_delete=models.CASCADE, db_column='oid')
-    sendofficial = models.BooleanField(default=False, db_column='sendOfficial')  # Field name made lowercase.
-    senddeqar = models.BooleanField(default=False, db_column='sendDeqar')  # Field name made lowercase.
-    sendinvoice = models.BooleanField(default=False, db_column='sendInvoice')  # Field name made lowercase.
+    sendOfficial = models.BooleanField(default=False, db_column='sendOfficial')
+    sendDeqar = models.BooleanField(default=False, db_column='sendDeqar')
+    sendInvoice = models.BooleanField(default=False, db_column='sendInvoice')
     function = models.CharField(max_length=255, blank=True, null=True)
     mtime = models.DateTimeField(auto_now=True)
 
@@ -144,9 +148,8 @@ class ContactOrganisation(models.Model):
 
 class OctopusAccount(models.Model):
     id = models.AutoField("ID", primary_key=True, db_column='oaid')
-    octopus_id = models.IntegerField("Octopus relation ID", db_column='octopusId', unique=True)  # Field name made lowercase.
+    octopusId = models.IntegerField("Octopus relation ID", db_column='octopusId', unique=True)
     organisation = models.OneToOneField(Organisation, on_delete=models.CASCADE, db_column='oid')
-    #name = models.CharField(max_length=255, blank=True, null=True)
     cid = models.ForeignKey(Contact, models.DO_NOTHING, db_column='cid', blank=True, null=True)
     contact = models.CharField(max_length=255, blank=True, null=True)
     client = models.BooleanField(default=False)
@@ -155,6 +158,10 @@ class OctopusAccount(models.Model):
 
     def __str__(self):
         return(str(self.organisation))
+
+    @property
+    def name(self):
+        return(str(self))
 
     class Meta:
         db_table = 'octopusAccount'

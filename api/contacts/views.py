@@ -6,8 +6,8 @@ from contacts.models import *
 
 class ContactViewSet(UniModelViewSet):
     queryset = Contact.objects.all()
-    list_fields = [ 'lastname', 'firstname', 'email', 'phone', 'mobile' ]
-    search_fields = [ 'lastname', 'firstname', 'email', 'phone', 'mobile' ]
+    list_fields = [ 'lastName', 'firstName', 'email', 'phone', 'mobile' ]
+    search_fields = [ 'lastName', 'firstName', 'email', 'phone', 'mobile' ]
 
 class OrganisationViewSet(UniModelViewSet):
     queryset = Organisation.objects.all()
@@ -17,12 +17,12 @@ class OrganisationViewSet(UniModelViewSet):
 
 class ContactOrganisationViewSet(UniModelViewSet):
     queryset = ContactOrganisation.objects.all()
-    list_fields = [ 'contact', 'organisation', 'sendofficial', 'senddeqar', 'sendinvoice' ]
-    filterset_fields = [ 'contact', 'organisation', 'sendofficial', 'senddeqar' ]
+    list_fields = [ 'contact', 'organisation', 'sendOfficial', 'sendDeqar', 'sendInvoice' ]
+    filterset_fields = [ 'contact', 'organisation', 'sendOfficial', 'sendDeqar' ]
 
 class OctopusAccountViewSet(UniModelViewSet):
     queryset = OctopusAccount.objects.all()
-    list_fields = [ 'organisation', 'octopus_id', 'client', 'supplier' ]
+    list_fields = [ 'organisation', 'octopusId', 'client', 'supplier' ]
 
 class DeqarConnectPartnerViewSet(UniModelViewSet):
     queryset = DeqarConnectPartner.objects.all()

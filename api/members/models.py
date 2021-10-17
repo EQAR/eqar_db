@@ -20,7 +20,7 @@ class Member(models.Model):
     cat = EnumField("category", choices=CAT_CHOICES)
     name = models.CharField("member", max_length=255, blank=True, null=True)
     organisation = models.OneToOneField(Organisation, models.RESTRICT, db_column='oid')
-    form_date = models.DateField("form date", db_column='formDate', blank=True, null=True)  # Field name made lowercase.
+    formDate = models.DateField("form date", db_column='formDate', blank=True, null=True)
     signatory = models.CharField("form signatory", max_length=255, blank=True, null=True)
     function = models.CharField("form signatory's function", max_length=255, blank=True, null=True)
     votes = models.IntegerField("votes", blank=True, null=True)

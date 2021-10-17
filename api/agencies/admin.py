@@ -76,7 +76,7 @@ class AgencyAdmin(admin.ModelAdmin):
     list_display = [ 'shortname', 'deqarId', 'baseCountry', 'registered', 'registeredSince', 'validUntil' ]
     list_filter = [ 'registered', 'registeredSince', 'validUntil' ]
     search_fields = [ 'shortname', 'organisation__longname', 'baseCountry__name', 'baseCountry__iso2', 'baseCountry__iso3' ]
-    readonly_fields = [ 'register_url', 'mtime' ]
+    readonly_fields = [ 'registerUrl', 'mtime' ]
 
 @admin.register(ChangeReport)
 class ChangeReportAdmin(admin.ModelAdmin):

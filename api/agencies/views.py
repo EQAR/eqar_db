@@ -33,7 +33,7 @@ class AgencyUpdateViewSet(UniModelViewSet):
 class ApplicationRoleViewSet(UniModelViewSet):
     queryset = ApplicationRole.objects.all()
     list_fields = [ 'application', 'contact', 'notes' ]
-    search_fields = [ 'application__agency__shortname', 'application__agency__organisation__longname', 'contact__firstname', 'contact__lastname' ]
+    search_fields = [ 'application__agency__shortname', 'application__agency__organisation__longname', 'contact__firstName', 'contact__lastName' ]
 
 class ApplicationClarificationViewSet(UniModelViewSet):
     queryset = ApplicationClarification.objects.all()

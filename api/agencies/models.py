@@ -32,12 +32,12 @@ class RegisteredAgency(models.Model):
         return(self.shortname)
 
     @property
-    def register_url(self):
-        slug = slugify(f'{self.deqar_id} {self.shortname}')
+    def registerUrl(self):
+        slug = slugify(f'{self.deqar_id} {str(self)}')
         return(f'{self.T_BASE_URL}{slug}')
 
     def get_absolute_url(self):
-        return(self.register_url)
+        return(self.registerUrl)
 
     class Meta:
         db_table = 'registeredAgency'
@@ -172,6 +172,10 @@ class Applications(models.Model):
     comment = models.TextField(blank=True, null=True)
     mtime = models.DateTimeField("last modified", auto_now=True)
 
+    @property
+    def selectName(self):
+        return(str(self))
+
     class Meta:
         db_table = 'applications'
         ordering = [ '-id' ]
@@ -287,6 +291,10 @@ class ChangeReport(models.Model):
     decisionDate = models.DateField(db_column='decisionDate', blank=True, null=True, verbose_name='decision of')
     comment = models.TextField(blank=True, null=True)
     mtime = models.DateTimeField('last modified', auto_now=True)
+
+    @property
+    def selectName(self):
+        return(str(self))
 
     class Meta:
         db_table = 'changeReport'

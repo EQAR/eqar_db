@@ -53,15 +53,15 @@ class Command(BaseCommand):
 
         # if not found, we will try by name instead:
         if contact is None:
-            matches = Contact.objects.annotate(name_search=Concat('firstname', Value(' '), 'lastname')).filter(name_search=remote['contact_person'], organisation=local.organisation)
+            matches = Contact.objects.annotate(name_search=Concat('firstName', Value(' '), 'lastName')).filter(name_search=remote['contact_person'], organisation=local.organisation)
             if len(matches) > 0:
                 contact = matches[0]
             else:
                 # if that didn't work either AND we do have an email address, we create a new contact:
                 if remote['emails']:
                     contact = Contact(
-                        firstname=remote['contact_person'].split(' ')[0],
-                        lastname=' '.join(remote['contact_person'].split(' ')[1:]),
+                        firstName=remote['contact_person'].split(' ')[0],
+                        lastName=' '.join(remote['contact_person'].split(' ')[1:]),
                         email=remote['emails'][0]['email']
                     )
                     self.stdout.write(self.style.WARNING('  * created contact: {}'.format(contact)))
