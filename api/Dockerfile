@@ -16,5 +16,10 @@ RUN pip install -r requirements.txt
 
 ADD . /eqar_db
 
-CMD bash -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+RUN mkdir -p /eqar_db/static
+
+CMD bash -c "python manage.py collectstatic --noinput && \
+	python manage.py wait_for_database && \
+	python manage.py migrate --fake-initial && \
+	gunicorn eqar_db.wsgi"
 

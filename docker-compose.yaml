@@ -1,27 +1,47 @@
 version: '3'
 
 services:
+
   backend:
+    image: eqar_db
     build: api/
-    ports:
-      - "8000:8000"
+    depends_on:
+      - db
     environment:
       - DJANGO_SECRET_KEY
       - DJANGO_DB_PASS
       - DJANGO_DB_HOST=db
       - DJANGO_DB_NAME=eqar
       - DJANGO_DB_USER=eqar
+      - PORT=8000
+    volumes:
+      - staticfiles:/eqar_db/static
 
   db:
     image: mariadb:10
     ports:
       - "3306:3306"
     volumes:
-#      - ./mariadb:/var/lib/mysql
-      - ./initdb.d:/docker-entrypoint-initdb.d
+      - data:/var/lib/mysql
+      - ./initdb.d:/docker-entrypoint-initdb.d:ro
     environment:
       - MARIADB_DATABASE=eqar
       - MARIADB_USER=eqar
       - MARIADB_PASSWORD=${DJANGO_DB_PASS}
       - MARIADB_ROOT_PASSWORD=${DJANGO_DB_PASS}
+
+  frontend:
+    image: nginx
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    volumes:
+      - ./nginx.conf:/etc/nginx/templates/default.conf.template:ro
+      - ./frontend:/usr/share/nginx/html/frontend:ro
+      - staticfiles:/usr/share/nginx/html/static:ro
+
+volumes:
+  staticfiles:
+  data:
 

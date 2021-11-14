@@ -17,8 +17,8 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
 
 ALLOWED_HOSTS = [
     'localhost',
-    'testing.int.eqar.eu',
-    'django.testzone.eqar.eu'
+    'backend',
+    os.environ.get('DJANGO_HOSTNAME', 'backend')
 ]
 
 
@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django_filters',
     'drf_yasg',
     'corsheaders',
+    'django_probes',
 
     'uni_db',
 
@@ -220,7 +221,5 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
-STATICFILES_DIRS = [
-    BASE_DIR.parent / 'static'
-]
+STATIC_ROOT = BASE_DIR / 'static'
 
