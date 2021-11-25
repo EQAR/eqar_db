@@ -21,6 +21,7 @@ class RegisteredAgency(models.Model):
                                         related_name='agency_web', verbose_name='website contact')
     registered = models.BooleanField(default=False)
     deqarId = models.IntegerField(db_column='deqarId', unique=True, blank=True, null=True, verbose_name='DEQAR ID')
+    registerUrl = models.CharField(editable=False, blank=True, db_column='registerUrl', max_length=255, null=True)
     registeredSince = models.DateField(db_column='registeredSince', blank=True, null=True, verbose_name='registered since')
     validUntil = models.DateField(db_column='validUntil', blank=True, null=True, verbose_name='registered until')
     baseCountry = models.ForeignKey(Country, on_delete=models.RESTRICT, db_column='baseCountry', verbose_name='base country')
@@ -31,10 +32,10 @@ class RegisteredAgency(models.Model):
     def __str__(self):
         return(self.shortname)
 
-    @property
-    def registerUrl(self):
+    def save(self, *args, **kwargs):
         slug = slugify(f'{self.deqar_id} {str(self)}')
-        return(f'{self.T_BASE_URL}{slug}')
+        self.registerUrl = f'{self.T_BASE_URL}{slug}'
+        super().save(*args, **kwargs)
 
     def get_absolute_url(self):
         return(self.registerUrl)
@@ -111,6 +112,7 @@ class Applications(models.Model):
 
     id = models.AutoField('ID', primary_key=True, db_column='aid')
     agency = models.ForeignKey(RegisteredAgency, on_delete=models.RESTRICT, db_column='rid')
+    selectName = models.CharField(editable=False, blank=True, db_column='selectName', max_length=255, null=True)
     submitDate = models.DateField("submitted on", db_column='submitDate', blank=False, null=False)
     type = EnumField(choices=TYPE_CHOICES, blank=False)
     stage = EnumField(choices=STAGE_CHOICES, blank=False)
@@ -172,9 +174,9 @@ class Applications(models.Model):
     comment = models.TextField(blank=True, null=True)
     mtime = models.DateTimeField("last modified", auto_now=True)
 
-    @property
-    def selectName(self):
-        return(str(self))
+    def save(self, *args, **kwargs):
+        self.selectName = str(self)
+        super().save(*args, **kwargs)
 
     class Meta:
         db_table = 'applications'
@@ -280,6 +282,7 @@ class ChangeReport(models.Model):
 
     id = models.AutoField('ID', primary_key=True, db_column='crid')
     agency = models.ForeignKey(RegisteredAgency, models.DO_NOTHING, db_column='rid')
+    selectName = models.CharField(editable=False, blank=True, db_column='selectName', max_length=255, null=True)
     submitDate = models.DateField(db_column='submitDate', blank=True, null=True, verbose_name='submitted on')
     stage = EnumField(choices=STAGE_CHOICES, blank=False)
     rapporteur1 = models.ForeignKey(Contact, models.DO_NOTHING, db_column='rapporteur1', blank=True, null=True,
@@ -292,9 +295,9 @@ class ChangeReport(models.Model):
     comment = models.TextField(blank=True, null=True)
     mtime = models.DateTimeField('last modified', auto_now=True)
 
-    @property
-    def selectName(self):
-        return(str(self))
+    def save(self, *args, **kwargs):
+        self.selectName = str(self)
+        super().save(*args, **kwargs)
 
     class Meta:
         db_table = 'changeReport'

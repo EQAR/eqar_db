@@ -61,6 +61,8 @@ class Contact(models.Model):
     id = models.AutoField("Contact ID", primary_key=True, db_column='cid')
     firstName = models.CharField("first name", db_column='firstName', max_length=255, blank=True, null=True)
     lastName = models.CharField("last name", db_column='lastName', max_length=255, blank=True, null=True)
+    person = models.CharField("full name", max_length=255, blank=True, null=True, editable=False)
+    nameEmail = models.CharField("label", db_column='nameEmail', blank=True, null=True, max_length=255, editable=False)
     email = models.EmailField("email address", unique=True, max_length=255, blank=True, null=True)
     phone = models.CharField("phone (landline)", max_length=255, blank=True, null=True)
     mobile = models.CharField("phone (mobile)", max_length=255, blank=True, null=True)
@@ -76,13 +78,16 @@ class Contact(models.Model):
     mtime = models.DateTimeField("last modified", auto_now=True)
     organisation = models.ManyToManyField('Organisation', through='ContactOrganisation')
 
-    @property
-    def person(self):
-        return '{} {}'.format(self.firstName, self.lastName) if self.firstName and self.lastName else self.firstName or self.lastName or 'NN'
-
-    @property
-    def nameEmail(self):
-        return str(self)
+    def save(self, *args, **kwargs):
+        # auto-generate person
+        self.person = \
+            '{} {}'.format(self.firstName, self.lastName) if self.firstName and self.lastName \
+            else self.firstName \
+            or self.lastName \
+            or 'NN'
+        # auto-generate nameEmail
+        self.nameEmail = str(self)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         if self.email:
@@ -102,6 +107,8 @@ class Organisation(models.Model):
     id = models.AutoField("Organisation ID", primary_key=True, db_column='oid')
     longname = models.CharField("Name", max_length=255, blank=True, null=True)
     acronym = models.CharField("Acronym", max_length=15, blank=True, null=True)
+    name = models.CharField(editable=False, blank=True, null=True, max_length=255)
+    alt_name = models.CharField(editable=False, blank=True, null=True, max_length=255)
     role = models.ForeignKey('Role', models.DO_NOTHING, db_column='role')
     address1 = models.CharField("Address", max_length=255, blank=True, null=True)
     address2 = models.CharField("Address (2)", max_length=255, blank=True, null=True)
@@ -113,13 +120,12 @@ class Organisation(models.Model):
     def __str__(self):
         return('{} ({})'.format(self.longname, self.acronym) if self.acronym and self.longname else self.longname or self.acronym)
 
-    @property
-    def name(self):
-        return(f'{self.acronym} - {self.longname}' if self.acronym and self.longname else self.longname or self.acronym)
-
-    @property
-    def alt_name(self):
-        return(str(self))
+    def save(self, *args, **kwargs):
+        # auto-generate name
+        self.name = f'{self.acronym} - {self.longname}' if self.acronym and self.longname else self.longname or self.acronym
+        # auto-generate alt_name
+        self.alt_name = str(self)
+        super().save(*args, **kwargs)
 
     class Meta:
         db_table = 'organisation'
@@ -149,6 +155,7 @@ class ContactOrganisation(models.Model):
 class OctopusAccount(models.Model):
     id = models.AutoField("ID", primary_key=True, db_column='oaid')
     octopusId = models.IntegerField("Octopus relation ID", db_column='octopusId', unique=True)
+    name = models.CharField(editable=False, blank=True, max_length=255, null=True)
     organisation = models.OneToOneField(Organisation, on_delete=models.CASCADE, db_column='oid')
     cid = models.ForeignKey(Contact, models.DO_NOTHING, db_column='cid', blank=True, null=True)
     contact = models.CharField(max_length=255, blank=True, null=True)
@@ -159,9 +166,10 @@ class OctopusAccount(models.Model):
     def __str__(self):
         return(str(self.organisation))
 
-    @property
-    def name(self):
-        return(str(self))
+    def save(self, *args, **kwargs):
+        # auto-generate name
+        self.name = str(self)
+        super().save(*args, **kwargs)
 
     class Meta:
         db_table = 'octopusAccount'

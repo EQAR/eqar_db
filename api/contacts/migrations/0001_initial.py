@@ -114,7 +114,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(db_column='oaid', primary_key=True, serialize=False, verbose_name='ID')),
                 ('octopusId', models.IntegerField(db_column='octopusId', unique=True, verbose_name='Octopus relation ID')),
-                ('name', models.CharField(blank=True, max_length=255, null=True)),
+                ('name', models.CharField(editable=False, max_length=255)),
                 ('contact', models.CharField(blank=True, max_length=255, null=True)),
                 ('client', models.BooleanField(default=False)),
                 ('supplier', models.BooleanField(default=False)),
