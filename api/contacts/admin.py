@@ -2,7 +2,7 @@ from django import forms
 from django.contrib import admin
 from django.db.models import Q
 
-from contacts.models import Contact, Organisation, Country, OctopusAccount, Role, DeqarPartner, DeqarConnectPartner, ContactOrganisation, Language
+from contacts.models import Contact, Organisation, Country, OctopusAccount, Role, DeqarPartner, DeqarConnectPartner, ContactOrganisation
 
 """
 Forms: mainly used to limit certain select boxes to own contacts
@@ -104,5 +104,4 @@ class DeqarConnectAdmin(admin.ModelAdmin):
     form = DeqarConnectForm
 
 admin.site.register(Role)
-admin.site.register(Language)
 

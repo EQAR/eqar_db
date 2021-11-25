@@ -39,7 +39,6 @@ class UniDB:
         InvoiceViewSet,
         CountryViewSet,
         RoleViewSet,
-        LanguageViewSet,
     ]
 
     @classmethod

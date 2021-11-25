@@ -5,18 +5,6 @@ from uni_db.fields import EnumField
 Contacts: basic models for organisations, persons, etc.
 """
 
-class Language(models.Model):
-    code = models.CharField("ISO 639-1 code", primary_key=True, max_length=2)
-    language = models.CharField(max_length=255, blank=True, null=True)
-
-    def __str__(self):
-        return(self.language)
-
-    class Meta:
-        db_table = 'language'
-        ordering = [ 'language' ]
-
-
 class Role(models.Model):
     id = models.IntegerField("Role ID", primary_key=True, db_column='rid')
     description = models.CharField(max_length=255, blank=True, null=True)
@@ -68,7 +56,6 @@ class Contact(models.Model):
     mobile = models.CharField("phone (mobile)", max_length=255, blank=True, null=True)
     brussels = models.BooleanField("Brussels-based", default=False)
     postal = models.BooleanField("receive paper mail", default=False)
-    prefLang = models.ForeignKey(Language, on_delete=models.RESTRICT, db_column='prefLang', default='en', verbose_name="language preference")
     addressExtension = models.CharField("address extension", db_column='addressExtension', max_length=255, blank=True, null=True)
     address1 = models.CharField(max_length=255, blank=True, null=True, help_text='Insert only if different from organisation!')
     address2 = models.CharField(max_length=255, blank=True, null=True)

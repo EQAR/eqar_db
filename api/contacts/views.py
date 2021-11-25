@@ -42,10 +42,6 @@ class CountryViewSet(UniModelViewSet):
     unidb_options = { 'delete': False }
     relations_count = ('organisation_set', 'registeredagency_set', 'contact_set', 'agencyupdate_set')
 
-class LanguageViewSet(UniModelViewSet):
-    queryset = Language.objects.all()
-    unidb_options = { 'delete': False, 'update': False }
-
 class RoleViewSet(UniModelViewSet):
     queryset = Role.objects.all()
     unidb_options = { 'readonly': True }
