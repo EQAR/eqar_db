@@ -83,7 +83,7 @@ class UniDB:
                 sql = query.sql
                 ordering = request.query_params.get('ordering')
                 if ordering:
-                    sql = re.sub(r'\s+ORDER\s+BY\s+.*$', '', sql, re.IGNORECASE | re.DOTALL)    # remove ORDER BY if exist
+                    sql = re.sub(r'\s+ORDER\s+BY\s+.*$', '', sql, flags=(re.IGNORECASE | re.DOTALL))    # remove ORDER BY if exist
                     sql += " ORDER BY `" + ( ordering[1:] + "` DESC" if ordering[0] == '-' else ordering + "`") # add new ORDER BY clause
                 limit = int(request.query_params.get('limit', SearchFacetPagination.default_limit))
                 offset = int(request.query_params.get('offset', 0))
