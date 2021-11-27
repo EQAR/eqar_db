@@ -58,11 +58,6 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_HEADERS = list(default_headers) + [
-    "if-modified-since",
-]
-
 AUTH_LDAP_SERVER_URI = 'ldap://ldap.int.eqar.eu/'
 
 AUTH_LDAP_BIND_DN = ''
@@ -181,7 +176,7 @@ DEQAR_BASE = os.environ.get('DEQAR_BASE')
 DEQAR_TOKEN = os.environ.get('DEQAR_TOKEN')
 
 # application title
-UNI_DB_TITLE = "EQAR database - TEST"
+UNI_DB_TITLE = "EQAR Database"
 
 # Password validation
 # https://docs.djangoproject.com/en/3.1/ref/settings/#auth-password-validators
