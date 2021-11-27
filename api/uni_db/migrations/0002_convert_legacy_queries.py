@@ -830,7 +830,7 @@ LEGACY_QUERIES = r"""{
       "allowNew": false,
       "allowEdit": false,
       "allowDelete": false,
-      "sql": "select   'Registered QAAs' as Category, count(distinct oid) AS Count, group_concat(contact.email SEPARATOR ', ') as emails from registeredAgency left join organisation using(oid) left join contact_organisation using(oid) left join contact using(cid) where   registeredAgency.registered and contact_organisation.sendofficial"
+      "sql": "select   'Registered QAAs' as Category, count(distinct rid) AS Count, count(distinct contact.cid) AS Emails, group_concat(DISTINCT contact.email SEPARATOR ', ') as emails from registeredAgency left join organisation using(oid) left join contact_organisation using(oid) left join contact on contact.cid = contact_organisation.cid or contact.cid = registeredAgency.mainContact where   registeredAgency.registered and contact_organisation.sendofficial"
     },
     "c8fc6bde2dc90d1fc3b68db63638be7e": {
       "name": "c8fc6bde2dc90d1fc3b68db63638be7e",
