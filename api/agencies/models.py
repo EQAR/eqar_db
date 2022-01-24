@@ -286,7 +286,7 @@ class ChangeReport(models.Model):
     submitDate = models.DateField(db_column='submitDate', blank=True, null=True, verbose_name='submitted on')
     stage = EnumField(choices=STAGE_CHOICES, blank=False)
     rapporteur1 = models.ForeignKey(Contact, models.DO_NOTHING, db_column='rapporteur1', blank=True, null=True,
-                                    related_name='change_report_rapporteur1')
+                                    related_name='change_report_rapporteur1', verbose_name='rapporteur')
     rapporteur2 = models.ForeignKey(Contact, models.DO_NOTHING, db_column='rapporteur2', blank=True, null=True,
                                     related_name='change_report_rapporteur2', verbose_name='rapporteur')
     secretary = models.ForeignKey(Contact, models.DO_NOTHING, db_column='secretary', blank=True, null=True, related_name='change_report_secretary')

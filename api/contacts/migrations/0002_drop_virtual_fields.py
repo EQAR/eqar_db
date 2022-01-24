@@ -31,13 +31,13 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='organisation',
             name='alt_name',
-            field=models.CharField(blank=True, null=True, editable=False, max_length=255),
+            field=models.CharField(blank=True, null=True, editable=False, max_length=255, verbose_name='display name (alternate)'),
             preserve_default=False,
         ),
         migrations.AlterField(
             model_name='organisation',
             name='name',
-            field=models.CharField(blank=True, null=True, editable=False, max_length=255),
+            field=models.CharField(blank=True, null=True, editable=False, max_length=255, verbose_name='display name'),
             preserve_default=False,
         ),
         migrations.RunSQL(

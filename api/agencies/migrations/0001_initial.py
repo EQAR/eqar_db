@@ -70,7 +70,7 @@ class Migration(migrations.Migration):
                 ('selectName', models.CharField(editable=False, db_column='selectName', max_length=255)),
                 ('mtime', models.DateTimeField(auto_now=True, verbose_name='last modified')),
                 ('agency', models.ForeignKey(db_column='rid', on_delete=django.db.models.deletion.DO_NOTHING, to='agencies.registeredagency')),
-                ('rapporteur1', models.ForeignKey(blank=True, db_column='rapporteur1', null=True, on_delete=django.db.models.deletion.DO_NOTHING, related_name='change_report_rapporteur1', to='contacts.contact')),
+                ('rapporteur1', models.ForeignKey(blank=True, db_column='rapporteur1', null=True, on_delete=django.db.models.deletion.DO_NOTHING, related_name='change_report_rapporteur1', to='contacts.contact', verbose_name='rapporteur')),
                 ('rapporteur2', models.ForeignKey(blank=True, db_column='rapporteur2', null=True, on_delete=django.db.models.deletion.DO_NOTHING, related_name='change_report_rapporteur2', to='contacts.contact', verbose_name='rapporteur')),
                 ('secretary', models.ForeignKey(blank=True, db_column='secretary', null=True, on_delete=django.db.models.deletion.DO_NOTHING, related_name='change_report_secretary', to='contacts.contact')),
             ],

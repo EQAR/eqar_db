@@ -8,12 +8,28 @@ class ContactViewSet(UniModelViewSet):
     queryset = Contact.objects.all()
     list_fields = [ 'lastName', 'firstName', 'email', 'phone', 'mobile' ]
     search_fields = [ 'lastName', 'firstName', 'email', 'phone', 'mobile' ]
+    relations_count = (
+        'contactorganisation_set',
+        'application_secretary',
+        'applicationclarification_set',
+        'applicationinterest_set',
+        'applicationrole_set',
+        'change_report_secretary',
+        'complaint_secretary',
+    )
 
 class OrganisationViewSet(UniModelViewSet):
     queryset = Organisation.objects.all()
     list_fields = [ 'acronym', 'longname', 'role', 'city', 'country' ]
     search_fields = [ 'acronym', 'longname', 'city', 'country__name', 'postcode' ]
     filterset_fields = [ 'role', 'city', 'country' ]
+    relations_count = (
+        'contactorganisation_set',
+        'octopusaccount',
+        'registeredagency',
+        'deqarpartner',
+        'deqarconnectpartner',
+    )
 
 class ContactOrganisationViewSet(UniModelViewSet):
     queryset = ContactOrganisation.objects.all()
@@ -45,4 +61,7 @@ class CountryViewSet(UniModelViewSet):
 class RoleViewSet(UniModelViewSet):
     queryset = Role.objects.all()
     unidb_options = { 'readonly': True }
+    relations_count = (
+        'organisation_set',
+    )
 
