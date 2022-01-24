@@ -29,6 +29,7 @@ class Migration(migrations.Migration):
                 'verbose_name': 'Raw query',
                 'verbose_name_plural': 'Raw queries',
                 'db_table': '_queries',
+                'ordering': ['description'],
             },
         ),
     ]

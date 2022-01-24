@@ -3,6 +3,7 @@ import re
 from django.urls import path, include
 from django.contrib import auth
 from django.db import connection
+from django.db.models import Q
 from django.conf import settings
 
 from rest_framework import status, generics, views, viewsets, permissions, routers, serializers
@@ -17,6 +18,7 @@ from agencies.views import *
 from uni_db.filters import SearchFacetPagination
 from uni_db.mixins import ReadWriteSerializerMixin
 from uni_db.models import RawQuery
+from uni_db.permissions import ObjectOwnerOrReadOnly, AllowReadOnly
 
 class UniDB:
 
@@ -54,25 +56,35 @@ class UniDB:
     @classmethod
     def system_path(cls):
 
-        class QuerySerializer(serializers.ModelSerializer):
+        class QueryWriteSerializer(serializers.ModelSerializer):
             owner = serializers.PrimaryKeyRelatedField(
                 queryset=auth.models.User.objects.all(),
                 default=serializers.CurrentUserDefault()
             )
-
             class Meta:
                 model = RawQuery
                 fields = '__all__'
+
+        class QueryReadSerializer(serializers.ModelSerializer):
+            owner = serializers.StringRelatedField()
+            searchable = serializers.SerializerMethodField()
+            class Meta:
+                model = RawQuery
+                fields = '__all__'
+            def get_searchable(self, query):
+                return (query.sql.count('%s') > 0)
 
         class QueryViewset(ReadWriteSerializerMixin, viewsets.ModelViewSet):
             """
             List and edit queries
             """
-            queryset = RawQuery.objects.all()
             pagination_class = None
-            read_serializer_class = QuerySerializer
-            write_serializer_class = QuerySerializer
-            permission_classes = [permissions.IsAuthenticated]
+            read_serializer_class = QueryReadSerializer
+            write_serializer_class = QueryWriteSerializer
+            permission_classes = [ permissions.IsAuthenticated & ObjectOwnerOrReadOnly ]
+
+            def get_queryset(self):
+                return RawQuery.objects.filter(Q(is_shared=True) | Q(owner=self.request.user))
 
             def retrieve(self, request, pk=None):
                 query = RawQuery.objects.get(pk=pk)
@@ -84,12 +96,15 @@ class UniDB:
                 if ordering:
                     sql = re.sub(r'\s+ORDER\s+BY\s+.*$', '', sql, flags=(re.IGNORECASE | re.DOTALL))    # remove ORDER BY if exist
                     sql += " ORDER BY `" + ( ordering[1:] + "` DESC" if ordering[0] == '-' else ordering + "`") # add new ORDER BY clause
+                search = request.query_params.get('search')
+                if search:
+                    sql = re.sub(r'\/\*((\*(?!\/)|[^*])*\%s(\*(?!\/)|[^*])*)\*\/', r'\1', sql)
                 limit = int(request.query_params.get('limit', SearchFacetPagination.default_limit))
                 offset = int(request.query_params.get('offset', 0))
-                sql += f" LIMIT {limit} OFFSET {offset}"
+                sql_window = f"{sql} LIMIT {limit} OFFSET {offset}"
                 with connection.cursor() as cursor:
-                    count = cursor.execute(query.sql)
-                    cursor.execute(sql)
+                    count = cursor.execute(sql, [ search ] * sql.count('%s') )
+                    cursor.execute(sql_window, [ search ] * sql_window.count('%s') )
                     columns = [ col[0] for col in cursor.description ]
                     results = [ dict(zip(columns,row)) for row in cursor.fetchall() ]
 
@@ -101,7 +116,7 @@ class UniDB:
 
 
         queries = routers.DefaultRouter()
-        queries.register('query', QueryViewset)
+        queries.register('query', QueryViewset, basename='query')
         return([
             path('system/tables/', cls.table_list().as_view()),
             path('', include(queries.urls))

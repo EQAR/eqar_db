@@ -23,4 +23,5 @@ class RawQuery(models.Model):
         db_table = '_queries'
         verbose_name = "Raw query"
         verbose_name_plural = "Raw queries"
+        ordering = [ 'description' ]
 
