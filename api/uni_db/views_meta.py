@@ -127,6 +127,11 @@ class UniDB:
                     else:
                         list_serializer_class = viewset().get_serializer_class()
                     list_serializer = list_serializer_class()
+                    if hasattr(viewset, 'get_read_serializer_class'):
+                        read_serializer_class = viewset().get_read_serializer_class()
+                    else:
+                        read_serializer_class = viewset().get_serializer_class()
+                    read_serializer = read_serializer_class()
                     def capitalize_first(text):
                         return(text[0].upper() + text[1:])
                     tables[slug] = dict(
@@ -137,6 +142,7 @@ class UniDB:
                         searchable=hasattr(viewset, 'search_fields'),
                         underlyingTable=None,
                         columns={ i: list_serializer.fields[i].label for i in list_serializer.fields },
+                        all_columns={ i: read_serializer.fields[i].label for i in read_serializer.fields },
                     )
                     options = getattr(viewset, 'unidb_options', {})
                     tables[slug]['hidden'] = options.get('hidden', False)
