@@ -8,14 +8,14 @@ from uni_db.metadata import ExtendedMetadata
 from uni_db.mixins import ReadWriteSerializerMixin
 from uni_db.filters import FilterBackend
 from uni_db.serializers import ListSerializer, DetailSerializer
+from uni_db.permissions import IsSuperUser, AllowReadOnly
 
 class ModelViewSet(ReadWriteSerializerMixin, viewsets.ModelViewSet):
     """
     adapted ModelViewSet class with some defaults
     """
-
     metadata_class = ExtendedMetadata
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated & (IsSuperUser | AllowReadOnly) ]
     filter_backends = [FilterBackend, SearchFilter, OrderingFilter]
 
     def get_field_order(self):
