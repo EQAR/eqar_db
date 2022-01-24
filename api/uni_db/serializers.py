@@ -1,3 +1,4 @@
+from django.db.models import Manager
 from rest_framework import serializers
 from uni_db.fields import EnumField
 
@@ -35,17 +36,40 @@ class DetailSerializer(serializers.ModelSerializer):
             reverse = []
             for f in self.Meta.relations_count:
                 try:
-                    revmgr = getattr(obj, f)
-                    reverse.append({
-                        "relatedTable": revmgr.model._meta.object_name.lower(),
-                        "count": revmgr.count(),
-                        "column": revmgr.field.target_field.name,
-                        "relatedColumn": revmgr.field.name,
-                        "unique": False,
-                        "value": getattr(obj, revmgr.field.target_field.name)
-                    })
+                    relation_model = getattr(obj._meta.model, f)
                 except AttributeError:
-                    raise Exception(f"Unknown field or not a reverse relationship: `{f}` in `{value._meta.object_name}` object")
+                    raise Exception(f"Unknown field in relations_count: `{f}` in `{obj._meta.object_name}` object")
+                else:
+                    try:
+                        relation = getattr(obj, f)
+                    except relation_model.RelatedObjectDoesNotExist:
+                        reverse.append({
+                            "relatedTable": relation_model.related.related_model._meta.object_name.lower(),
+                            "count": 0,
+                            "column": relation_model.related.field.target_field.name,
+                            "relatedColumn": relation_model.related.field.name,
+                            "unique": True,
+                            "value": getattr(obj, relation_model.related.field.target_field.name)
+                        })
+                    else:
+                        if isinstance(relation, Manager):
+                            reverse.append({
+                                "relatedTable": relation.model._meta.object_name.lower(),
+                                "count": relation.count(),
+                                "column": relation.field.target_field.name,
+                                "relatedColumn": relation.field.name,
+                                "unique": False,
+                                "value": getattr(obj, relation.field.target_field.name)
+                            })
+                        else:
+                            reverse.append({
+                                "relatedTable": relation._meta.object_name.lower(),
+                                "count": 1,
+                                "column": relation_model.related.field.target_field.name,
+                                "relatedColumn": relation_model.related.field.name,
+                                "unique": True,
+                                "value": getattr(obj, relation_model.related.field.target_field.name)
+                            })
             return reverse
         else:
             return None
