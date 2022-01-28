@@ -86,7 +86,7 @@ class UniDB:
             def get_queryset(self):
                 return RawQuery.objects.filter(Q(is_shared=True) | Q(owner=self.request.user))
 
-            def retrieve(self, request, pk=None):
+            def run_query(self, request, pk=None, pagination=True):
                 query = RawQuery.objects.get(pk=pk)
                 if not re.match(r'^\s*SELECT', query.sql, re.IGNORECASE):
                     raise PermissionDenied(detail='Raw queries must start with SELECT')
@@ -99,21 +99,37 @@ class UniDB:
                 search = request.query_params.get('search')
                 if search:
                     sql = re.sub(r'\/\*((\*(?!\/)|[^*])*\%s(\*(?!\/)|[^*])*)\*\/', r'\1', sql)
-                limit = int(request.query_params.get('limit', SearchFacetPagination.default_limit))
-                offset = int(request.query_params.get('offset', 0))
-                sql_window = f"{sql} LIMIT {limit} OFFSET {offset}"
+                if pagination:
+                    limit = int(request.query_params.get('limit', SearchFacetPagination.default_limit))
+                    offset = int(request.query_params.get('offset', 0))
+                    sql_window = f"{sql} LIMIT {limit} OFFSET {offset}"
                 with connection.cursor() as cursor:
                     count = cursor.execute(sql, [ search ] * sql.count('%s') )
-                    cursor.execute(sql_window, [ search ] * sql_window.count('%s') )
-                    columns = [ col[0] for col in cursor.description ]
-                    results = [ dict(zip(columns,row)) for row in cursor.fetchall() ]
+                    if pagination:
+                        cursor.execute(sql_window, [ search ] * sql_window.count('%s') )
+                    self.columns = [ col[0] for col in cursor.description ]
+                    results = [ dict(zip(self.columns,row)) for row in cursor.fetchall() ]
 
-                return Response(dict(
+                return dict(
                     count=count,
-                    columns={ c: c for c in columns },
+                    columns={ c: c for c in self.columns },
                     results=results
-                ), status=status.HTTP_200_OK)
+                )
 
+            def retrieve(self, request, pk=None):
+                output = self.run_query(request, pk, True)
+                return Response(output, status=status.HTTP_200_OK)
+
+            @action(detail=True, methods=['get'])
+            def download(self, request, pk=None):
+                output = self.run_query(request, pk, False)
+                return Response(output['results'], status=status.HTTP_200_OK)
+
+            def get_renderer_context(self):
+                context = super().get_renderer_context()
+                if self.action in [ 'retrieve', 'download' ]:
+                    context['header'] = self.columns
+                return context
 
         queries = routers.DefaultRouter()
         queries.register('query', QueryViewset, basename='query')

@@ -42,13 +42,9 @@ class SearchFacetPagination(pagination.LimitOffsetPagination):
         no custom behaviour here, but we need QuerySet and View objects later on
         (they're not passed to the function we actually customise)
         """
-        if (request.accepted_renderer.media_type in [ 'text/csv' ]):
-            # this disables pagination when downloading
-            return(None)
-        else:
-            self.qs = queryset
-            self.view = view
-            return(super().paginate_queryset(queryset, request, view))
+        self.qs = queryset
+        self.view = view
+        return(super().paginate_queryset(queryset, request, view))
 
     def get_paginated_response(self, data):
         r = super().get_paginated_response(data) # data as original class returns it

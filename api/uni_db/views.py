@@ -72,6 +72,12 @@ class UniModelViewSet(ModelViewSet):
         serializer = self.get_search_serializer_class()
         return Response(serializer(results, many=True).data)
 
+    @action(detail=False, methods=['get'])
+    def download(self, request):
+        results = self.filter_queryset(self.queryset)
+        serializer = self.get_download_serializer_class()
+        return Response(serializer(results, many=True).data)
+
     def _make_serializer_class(self, baseclass, ref_name, details):
 
         class _ThisSerializer(baseclass):

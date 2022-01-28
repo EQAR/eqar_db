@@ -4,11 +4,9 @@ class ReadWriteSerializerMixin(object):
 
     - for GET requests on the collection:
       * list_serializer_class by default
-      * download_serializer_class when CSV format requested
 
     - for GET requests on objects:
       * read_serializer_class by default
-      * nested_serializer_class for downloads
 
     - for POST/PUT/... requests:
       * write_serializer_class
@@ -26,10 +24,7 @@ class ReadWriteSerializerMixin(object):
         if self.action in ["create", "update", "partial_update", "destroy"]:
             return self.get_write_serializer_class()
         elif self.action == "list":
-            if self.request.accepted_renderer.media_type in [ 'text/csv' ]:
-                return self.get_download_serializer_class()
-            else:
-                return self.get_list_serializer_class()
+            return self.get_list_serializer_class()
         else:
             return self.get_read_serializer_class()
 
