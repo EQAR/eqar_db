@@ -1,4 +1,9 @@
 from rest_framework import viewsets, permissions
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.renderers import BaseRenderer
+
+from lxml import etree
 
 from uni_db.views import ModelViewSet, UniModelViewSet
 
@@ -64,4 +69,65 @@ class RoleViewSet(UniModelViewSet):
     relations_count = (
         'organisation_set',
     )
+
+class XMLRenderer(BaseRenderer):
+    """
+    Renderer which serializes to XML.
+    """
+    media_type = "application/xml"
+    format = "xml"
+    charset = "utf-8"
+    item_tag_name = "list-item"
+
+    def render(self, data, accepted_media_type=None, renderer_context=None):
+        """
+        Renders `data` into serialized XML.
+        """
+        if data is None:
+            return ""
+        return etree.tostring(data, pretty_print=True)
+
+class GxpAddressBook(APIView):
+    permission_classes = []
+    renderer_classes = (XMLRenderer,)
+
+    phone_replace = [
+        ('/^\+/',       '00'),
+        ('/[^0-9]+/',   ''),
+    ]
+
+    group_id = "2"
+    group_name = "EQAR DB"
+
+    def get(self, request, *args, **kwargs):
+        def TextElement(tag, text):
+            e = etree.Element(tag)
+            e.text = text
+            return e
+
+        abook = etree.Element("AddressBook")
+        group = etree.Element("pbgroup")
+        group.append(TextElement("id", self.group_id))
+        group.append(TextElement("name", self.group_name))
+        abook.append(group)
+        for item in ContactOrganisation.objects.all():
+            contact = etree.Element("Contact")
+            contact.append(TextElement("FirstName", item.contact.firstName))
+            contact.append(TextElement("LastName", item.contact.lastName))
+            contact.append(TextElement("Department", item.organisation.name))
+            contact.append(TextElement("Group", self.group_id))
+            #$phone->phonenumber = preg_replace($patterns, $replace, $row['phone']);
+            if item.contact.phone:
+                phone = etree.Element("Phone", type="Work")
+                phone.append(TextElement("phonenumber", item.contact.phone))
+                phone.append(TextElement("accountindex", "1"))
+                contact.append(phone)
+            if item.contact.mobile:
+                phone = etree.Element("Phone", type="Cell")
+                phone.append(TextElement("phonenumber", item.contact.mobile))
+                phone.append(TextElement("accountindex", "1"))
+                contact.append(phone)
+            abook.append(contact)
+
+        return Response(abook, content_type='application/xml')
 

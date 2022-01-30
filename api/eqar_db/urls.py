@@ -20,9 +20,11 @@ from rest_framework import routers
 
 import uni_db.urls
 
+from contacts.views import GxpAddressBook
 
 urlpatterns = [
     path(r'api/v3/', include(uni_db.urls)),
     path(r'admin/', admin.site.urls),
+    path(r'phonebook.xml', GxpAddressBook.as_view()),
 ]
 
