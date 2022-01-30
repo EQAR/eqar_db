@@ -1,0 +1,63 @@
+dn: cn=config
+objectClass: olcGlobal
+cn: config
+olcArgsFile: /var/run/slapd/slapd.args
+olcLogLevel: none
+olcPidFile: /var/run/slapd/slapd.pid
+olcToolThreads: 1
+
+dn: cn=module{0},cn=config
+objectClass: olcModuleList
+cn: module{0}
+olcModulePath: /usr/lib/ldap
+olcModuleLoad: {0}back_sql
+
+dn: cn=schema,cn=config
+objectClass: olcSchemaConfig
+cn: schema
+
+dn: olcDatabase={-1}frontend,cn=config
+objectClass: olcDatabaseConfig
+objectClass: olcFrontendConfig
+olcDatabase: {-1}frontend
+olcAccess: {0}to * by dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=extern
+ al,cn=auth manage by * break
+olcAccess: {1}to dn.exact="" by * read
+olcAccess: {2}to dn.base="cn=Subschema" by * read
+olcSizeLimit: 500
+
+dn: olcDatabase={0}config,cn=config
+objectClass: olcDatabaseConfig
+olcDatabase: {0}config
+olcAccess: {0}to * by dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=extern
+ al,cn=auth manage by * break
+olcRootDN: cn=admin,cn=config
+
+dn: olcDatabase={1}sql,cn=config
+objectClass: olcDatabaseConfig
+objectClass: olcSqlConfig
+olcDatabase: {1}sql
+olcDbName: eqar
+olcSuffix: dc=Contacts,dc=eqar,dc=eu
+olcAccess: {0}to * by * read
+olcAddContentAcl: FALSE
+olcLastMod: FALSE
+olcMaxDerefDepth: 15
+olcReadOnly: TRUE
+olcRootDN: cn=admin,cn=config
+olcSyncUseSubentry: FALSE
+olcMonitoring: FALSE
+olcDbUser: openldap
+olcSqlSubtreeCond: ldap_entries.dn LIKE CONCAT('%',UCASE(?))
+olcSqlChildrenCond: ldap_entries.dn LIKE CONCAT('%',UCASE(?))
+olcSqlCreateNeedsSelect: FALSE
+olcSqlUpperFunc: UCASE
+olcSqlUpperNeedsCast: FALSE
+olcSqlHasLDAPinfoDnRu: FALSE
+olcSqlFailIfNoMapping: FALSE
+olcSqlAllowOrphans: FALSE
+olcSqlBaseObject: /dev/null
+olcSqlUseSubtreeShortcut: TRUE
+olcSqlFetchAllAttrs: FALSE
+olcSqlCheckSchema: FALSE
+olcSqlAutocommit: FALSE

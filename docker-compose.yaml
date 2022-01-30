@@ -41,6 +41,15 @@ services:
       - ./frontend:/usr/share/nginx/html/frontend:ro
       - staticfiles:/usr/share/nginx/html/static:ro
 
+  ldap:
+    build: slapd/
+    ports:
+      - "3389:389"
+    depends_on:
+      - db
+    command: /wait-for-it.sh db:3306 -- slapd -d 320
+
+
 volumes:
   staticfiles:
   data:
