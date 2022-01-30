@@ -1,4 +1,4 @@
-FROM python:3.8
+FROM python:3.8-slim
 
 ENV PYTHONUNBUFFERED 1
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -8,7 +8,7 @@ WORKDIR /eqar_db
 
 RUN pip install --upgrade pip
 RUN apt-get update
-RUN apt-get install -y build-essential python3-dev libldap2-dev libsasl2-dev
+RUN apt-get install -y build-essential python3-dev libldap2-dev libsasl2-dev default-libmysqlclient-dev
 
 ADD requirements.txt /eqar_db/
 
