@@ -3,12 +3,12 @@ version: '3'
 services:
 
   backend:
-    image: eqar_db
     build: api/
     depends_on:
       - db
     environment:
       - DJANGO_SECRET_KEY
+      - DJANGO_HOSTNAME
       - DJANGO_DB_PASS
       - DJANGO_DB_HOST=db
       - DJANGO_DB_NAME=eqar
@@ -19,8 +19,6 @@ services:
 
   db:
     image: mariadb:10
-    ports:
-      - "3306:3306"
     volumes:
       - data:/var/lib/mysql
       - ./initdb.d:/docker-entrypoint-initdb.d:ro
@@ -33,7 +31,7 @@ services:
   frontend:
     image: nginx
     ports:
-      - "8080:80"
+      - "${HTTP_PORT:-8080}:80"
     depends_on:
       - backend
     volumes:
@@ -44,10 +42,10 @@ services:
   ldap:
     build: slapd/
     ports:
-      - "3389:389"
+      - "${LDAP_PORT:-3389}:389"
     depends_on:
       - db
-    command: /wait-for-it.sh db:3306 -- slapd -d 320
+    command: /wait-for-it.sh db:3306 -- slapd -d ${SLAPD_DEBUG:-320}
 
 
 volumes:

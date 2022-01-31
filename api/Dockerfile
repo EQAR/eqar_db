@@ -18,6 +18,8 @@ ADD . /eqar_db
 
 RUN mkdir -p /eqar_db/static
 
+RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
 CMD bash -c "python manage.py collectstatic --noinput && \
 	python manage.py wait_for_database && \
 	python manage.py migrate --fake-initial && \

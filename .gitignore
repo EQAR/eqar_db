@@ -1,7 +1,8 @@
 *.pyc
 *.db
 *~
-/api/eqar_db/settings_local.py
+docker-compose.override.yml
+settings_local.py
 /api/agencies/deqarclient.py
 /initdb.d/0001_eqar.sql
 /env/
