@@ -129,6 +129,8 @@ class Applications(models.Model):
                                                     related_name='application_rapporteur3', verbose_name='third rapporteur')
     secretary =     models.ForeignKey(Contact,      on_delete=models.RESTRICT, db_column='secretary',   blank=True, null=True, related_name='application_secretary'  )
     coordinator =   models.ForeignKey(Organisation, on_delete=models.RESTRICT, db_column='coordinator', blank=True, null=True )
+    roles =         models.ManyToManyField('contacts.Contact', through='ApplicationRole', related_name='application_role')
+    interests =     models.ManyToManyField('contacts.Contact', through='ApplicationInterest', related_name='application_interest')
     panel_2_1 = EnumField("ESG 2.1 panel/rapporteurs/RC", choices=PANEL_CHOICES, blank=True, null=True)
     panel_2_2 = EnumField("ESG 2.2", choices=PANEL_CHOICES, blank=True, null=True)
     panel_2_3 = EnumField("ESG 2.3", choices=PANEL_CHOICES, blank=True, null=True)
