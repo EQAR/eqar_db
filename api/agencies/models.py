@@ -30,10 +30,12 @@ class RegisteredAgency(models.Model):
     mtime = models.DateTimeField('last modified', auto_now=True)
 
     def __str__(self):
-        return(self.shortname)
+        return(self.shortname or f'[id={self.id}]')
 
     def save(self, *args, **kwargs):
-        slug = slugify(f'{self.deqar_id} {str(self)}')
+        if self.organisation is not None and self.organisation.acronym:
+            self.shortname = self.organisation.acronym
+        slug = slugify(f'{self.deqarId} {str(self)}')
         self.registerUrl = f'{self.T_BASE_URL}{slug}'
         super().save(*args, **kwargs)
 

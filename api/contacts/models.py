@@ -10,7 +10,7 @@ class Role(models.Model):
     description = models.CharField(max_length=255, blank=True, null=True)
 
     def __str__(self):
-        return(self.description)
+        return(self.description or f'[id={self.id}]')
 
     class Meta:
         db_table = 'role'
@@ -105,7 +105,7 @@ class Organisation(models.Model):
     mtime = models.DateTimeField("last modified", auto_now=True)
 
     def __str__(self):
-        return(f'{self.acronym} - {self.longname}' if self.acronym and self.longname else self.longname or self.acronym)
+        return(f'{self.acronym} - {self.longname}' if self.acronym and self.longname else self.longname or self.acronym or f'[id={self.id}]')
 
     def save(self, *args, **kwargs):
         # auto-generate name
