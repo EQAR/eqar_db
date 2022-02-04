@@ -35,8 +35,11 @@ class RegisteredAgency(models.Model):
     def save(self, *args, **kwargs):
         if self.organisation is not None and self.organisation.acronym:
             self.shortname = self.organisation.acronym
-        slug = slugify(f'{self.deqarId} {str(self)}')
-        self.registerUrl = f'{self.T_BASE_URL}{slug}'
+        if self.deqarId:
+            slug = slugify(f'{self.deqarId} {str(self)}')
+            self.registerUrl = f'{self.T_BASE_URL}{slug}'
+        else:
+            self.registerUrl = None
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):
