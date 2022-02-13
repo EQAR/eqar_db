@@ -1,6 +1,7 @@
 from django.urls import path, include
 
 from rest_framework.authtoken import views
+from uni_db.auth import LoginForToken
 from uni_db.views_meta import UniDB
 
 from rest_framework import permissions
@@ -21,7 +22,7 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
-    path(r'login/', views.obtain_auth_token),
+    path(r'login/', LoginForToken.as_view()),
     path(r'swagger<format>', schema_view.without_ui(cache_timeout=0), name='schema-json'),
     path(r'swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path(r'redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
