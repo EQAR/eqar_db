@@ -158,6 +158,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'eqar_db.wsgi.application'
 
+CORS_ALLOWED_ORIGINS = [
+    "https://datawrapper.dwcdn.net", # for https://app.datawrapper.de/
+]
 
 # Database
 # https://docs.djangoproject.com/en/3.1/ref/settings/#databases
