@@ -131,6 +131,7 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
         'rest_framework_csv.renderers.PaginatedCSVRenderer',
+        'stats.renderers.PaginatedInfogramJSONRenderer',
     ),
 #    'DEFAULT_VERSIONING_CLASS': 'rest_framework.versioning.NamespaceVersioning',
     'DEFAULT_PAGINATION_CLASS': 'uni_db.filters.SearchFacetPagination',

@@ -10,6 +10,7 @@ class InfogramJSONRenderer(JSONRenderer):
 
     derived from https://github.com/mjumbewu/django-rest-framework-csv
     """
+    format = 'infogram'
 
     level_sep = '_' # used for flattening nested lists/dicts
     empty_cell = '0' # cells otherwise empty will be filled with this value
@@ -31,12 +32,20 @@ class InfogramJSONRenderer(JSONRenderer):
         encoding = renderer_context.get('encoding', settings.DEFAULT_CHARSET)
 
         if isinstance(data, list):
-            tablized = list(self.tablize(data, header=header, labels=labels))
+            # if data is a list, it will be converted into a single table/sheet
+            tablized = [ list(self.tablize(data, header=header, labels=labels)) ]
         elif isinstance(data, dict):
+            # if data is a dict, each element will become one sheet
             tablized = []
             for sheet_name in data:
-                sheet = list(self.tablize(data[sheet_name], header=header, labels=labels))
-                sheet[0][0] = str(sheet_name) # All values must be strings
+                if isinstance(data[sheet_name], dict) or isinstance(data[sheet_name], list):
+                    # nested lists or dicts will be converted
+                    sheet = list(self.tablize(data[sheet_name], header=header, labels=labels))
+                    sheet[0][0] = str(sheet_name) # All values must be strings
+                else:
+                    # not very meaningful, but to ensure all kind of data can be rendered:
+                    # scalar values are simply put on a sheet by themselves
+                    sheet = [ [ str(sheet_name) ], [ str(data[sheet_name]) ] ]
                 tablized.append(sheet)
 
         return super().render(tablized, media_type, renderer_context)
@@ -158,4 +167,21 @@ class InfogramJSONRenderer(JSONRenderer):
             nested_item = self.nest_flat_item(flat_item, key)
             flat_dict.update(nested_item)
         return flat_dict
+
+
+class PaginatedInfogramJSONRenderer(InfogramJSONRenderer):
+    """
+    Paginated renderer - use when pagination is turned on for DRF
+
+    Generally, InfogramJSONRenderer is not ideally used with pagination - but this class makes
+    sure that if it is, then only the results list is rendered into a table
+    """
+    results_field = 'results' # default of DRF pagination classes - adjust if needed
+
+    def render(self, data, media_type=None, renderer_context=None):
+        # there is no explicit way to recognise a paginated result, but if the following is true
+        # it probably is one:
+        if isinstance(data, dict) and isinstance(data.get(self.results_field, None), list):
+            data = data.get(self.results_field)
+        return super().render(data, media_type=media_type, renderer_context=renderer_context)
 

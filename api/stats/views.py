@@ -10,7 +10,6 @@ from agencies.models import Applications, RegisteredAgency
 
 from stats.helpers import Esg, EsgList
 from stats.serializers import ApplicationsListSerializer
-from stats.renderers import InfogramJSONRenderer
 
 # these views are primarily for the EQAR website
 
@@ -106,7 +105,6 @@ class ComplianceExtendedStats(ComplianceStats):
     show compliance by ESG standard, broken down by types, years and agencies
     """
     permission_classes = [ ]
-    renderer_classes = [ InfogramJSONRenderer ]
 
     year_start = 2016
 
