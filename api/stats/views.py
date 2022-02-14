@@ -88,11 +88,13 @@ class ComplianceStats(views.APIView):
         return context
 
     def filtered_stats(self, **kwargs):
+        stats = []
         for esg in EsgList():
             this = { 'standard': str(esg) }
             for count in self.queryset.exclude(**{f'{esg.rc}__isnull': True}).filter(**kwargs).values(esg.rc).annotate(n=Count('id')).order_by(esg.rc):
                 this[count[esg.rc]] = count['n']
-            yield this
+            stats.append(this)
+        return stats
 
     def get(self, request, format=None):
         return Response(self.filtered_stats(), status=status.HTTP_200_OK)
