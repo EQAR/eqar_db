@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'members',
     'agencies',
     'ldap_view',
+    'stats',
 ]
 
 MIDDLEWARE = [
