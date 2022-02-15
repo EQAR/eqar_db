@@ -19,12 +19,14 @@ from django.urls import path, include
 from rest_framework import routers
 
 import uni_db.urls
+import stats.urls
 
 from contacts.views import GxpAddressBook
 
 urlpatterns = [
     path(r'api/v3/', include(uni_db.urls)),
     path(r'admin/', admin.site.urls),
+    path(r'stats/v1/', include(stats.urls)),
     path(r'phonebook.xml', GxpAddressBook.as_view()),
 ]
 

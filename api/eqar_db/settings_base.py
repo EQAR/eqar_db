@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'members',
     'agencies',
     'ldap_view',
+    'stats',
 ]
 
 MIDDLEWARE = [
@@ -130,6 +131,7 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
         'rest_framework_csv.renderers.PaginatedCSVRenderer',
+        'stats.renderers.PaginatedInfogramJSONRenderer',
     ),
 #    'DEFAULT_VERSIONING_CLASS': 'rest_framework.versioning.NamespaceVersioning',
     'DEFAULT_PAGINATION_CLASS': 'uni_db.filters.SearchFacetPagination',
@@ -157,6 +159,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'eqar_db.wsgi.application'
 
+CORS_ALLOWED_ORIGINS = [
+    "https://datawrapper.dwcdn.net", # for https://app.datawrapper.de/
+]
 
 # Database
 # https://docs.djangoproject.com/en/3.1/ref/settings/#databases

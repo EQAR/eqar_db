@@ -116,12 +116,12 @@ class UniDB:
                     results=results
                 )
 
-            def retrieve(self, request, pk=None):
+            def retrieve(self, request, pk=None, format=None):
                 output = self.run_query(request, pk, True)
                 return Response(output, status=status.HTTP_200_OK)
 
             @action(detail=True, methods=['get'])
-            def download(self, request, pk=None):
+            def download(self, request, pk=None, format=None):
                 output = self.run_query(request, pk, False)
                 return Response(output['results'], status=status.HTTP_200_OK)
 
