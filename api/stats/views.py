@@ -1,7 +1,10 @@
 import datetime
 
+from django.conf import settings
 from django.db.models import Count, Max
 from django.shortcuts import render
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_control
 
 from rest_framework import generics, status, views, viewsets, permissions, serializers
 from rest_framework.response import Response
@@ -33,6 +36,7 @@ class WithdrawnApplications(generics.ListAPIView):
 
 # following views are primarily for datawrapper.io charts
 
+@method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
 class ApplicationsTimeline(views.APIView):
     """
     return number of applications and registered agencies by year
@@ -68,6 +72,7 @@ class ApplicationsTimeline(views.APIView):
             })
         return Response(stats, status=status.HTTP_200_OK)
 
+@method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
 class ComplianceStats(views.APIView):
     """
     show compliance by ESG standard
