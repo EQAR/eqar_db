@@ -183,6 +183,9 @@ DEQAR_TOKEN = os.environ.get('DEQAR_TOKEN')
 # application title
 UNI_DB_TITLE = "EQAR Database"
 
+# cache time for statistics endpoints
+STATS_CACHE_MAX_AGE = 900
+
 # Password validation
 # https://docs.djangoproject.com/en/3.1/ref/settings/#auth-password-validators
 

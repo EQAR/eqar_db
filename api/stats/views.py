@@ -1,7 +1,10 @@
 import datetime
 
-from django.db.models import Count, Max
+from django.conf import settings
+from django.db.models import Count, Max, Q
 from django.shortcuts import render
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_control
 
 from rest_framework import generics, status, views, viewsets, permissions, serializers
 from rest_framework.response import Response
@@ -33,6 +36,7 @@ class WithdrawnApplications(generics.ListAPIView):
 
 # following views are primarily for datawrapper.io charts
 
+@method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
 class ApplicationsTimeline(views.APIView):
     """
     return number of applications and registered agencies by year
@@ -68,6 +72,45 @@ class ApplicationsTimeline(views.APIView):
             })
         return Response(stats, status=status.HTTP_200_OK)
 
+@method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
+class ApplicationsTotals(views.APIView):
+    """
+    return application results by type
+    """
+    permission_classes = [ ]
+
+    def get_renderer_context(self):
+        context = super().get_renderer_context()
+        context['header'] = (
+            'result',
+            'initial',
+            'renewal',
+        )
+        context['labels'] = {
+            'result': 'Result',
+            'initial': 'Initial applications',
+            'renewal': 'Renewal applications',
+        }
+        return context
+
+    def get(self, request, format=None):
+        stats = {}
+        for i in Applications.objects.filter(Q(stage='-- Withdrawn') | Q(stage='8. Completed')).values('result','type').annotate(n=Count('id')).order_by('result', 'type'):
+            if i['result'] in stats:
+                stats[i['result']][i['type']] = i['n']
+            else:
+                stats[i['result']] = { i['type']: i['n'] }
+        table = []
+        for i in stats:
+            if i:
+                table.append({
+                    'result': i,
+                    'initial': stats[i].get('Initial', 0),
+                    'renewal': stats[i].get('Renewal', 0),
+                })
+        return Response(table, status=status.HTTP_200_OK)
+
+@method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
 class ComplianceStats(views.APIView):
     """
     show compliance by ESG standard
