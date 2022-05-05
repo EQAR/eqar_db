@@ -8,6 +8,9 @@ from django.views.decorators.cache import cache_control
 
 from rest_framework import generics, status, views, viewsets, permissions, serializers
 from rest_framework.response import Response
+from rest_framework.filters import SearchFilter, OrderingFilter
+
+from uni_db.filters import FilterBackend
 
 from agencies.models import Applications, RegisteredAgency
 
@@ -24,6 +27,8 @@ class OpenApplications(generics.ListAPIView):
     queryset = Applications.objects.exclude(stage__in=['8. Completed', '-- Withdrawn']).order_by('stage', '-submitDate')
     serializer_class = ApplicationsListSerializer
     pagination_class = None
+    filter_backends = [FilterBackend, OrderingFilter]
+    filterset_fields = [ 'type', 'stage', 'agency', 'secretary' ]
 
 class WithdrawnApplications(generics.ListAPIView):
     """
