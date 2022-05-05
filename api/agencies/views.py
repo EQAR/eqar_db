@@ -1,3 +1,5 @@
+from django.db.models import Q
+
 from uni_db.views import ModelViewSet, UniModelViewSet
 
 from agencies.models import *
@@ -26,12 +28,22 @@ class ApplicationViewSet(UniModelViewSet):
         'applicationinterest_set',
         'applicationrole_set',
     )
-    relations_querysets = {
-        'rapporteur1': Contact.objects.filter(organisation=48, contactorganisation__function__startswith='RC'),
-        'rapporteur2': Contact.objects.filter(organisation=48, contactorganisation__function__startswith='RC'),
-        'rapporteur3': Contact.objects.filter(organisation=48, contactorganisation__function__startswith='RC'),
-        'secretary':   Contact.objects.filter(organisation=48, contactorganisation__function__startswith='SEC'),
-        'coordinator': Organisation.objects.filter(pk__in=Applications.objects.values('coordinator').distinct())
+    extra_kwargs = {
+        'rapporteur1': {
+            'limit_choices_to': Q(organisation=48, contactorganisation__function__startswith='RC'),
+        },
+        'rapporteur2': {
+            'limit_choices_to': Q(organisation=48, contactorganisation__function__startswith='RC'),
+        },
+        'rapporteur3': {
+            'limit_choices_to': Q(organisation=48, contactorganisation__function__startswith='RC'),
+        },
+        'secretary': {
+            'limit_choices_to': Q(organisation=48, contactorganisation__function__startswith='SEC'),
+        },
+        'coordinator': {
+            'limit_choices_to': Q(pk__in=Applications.objects.values('coordinator').distinct()),
+        },
     }
 
 class AgencyUpdateViewSet(UniModelViewSet):
@@ -60,10 +72,16 @@ class ChangeReportViewSet(UniModelViewSet):
     list_fields = [ 'agency', 'submitDate', 'stage', 'decisionDate', 'result' ]
     filterset_fields = [ 'agency', 'stage', 'secretary', 'result' ]
     search_fields = [ 'agency__shortname', 'agency__organisation__longname' ]
-    relations_querysets = {
-        'rapporteur1': Contact.objects.filter(organisation=48, contactorganisation__function__startswith='RC'),
-        'rapporteur2': Contact.objects.filter(organisation=48, contactorganisation__function__startswith='RC'),
-        'secretary':   Contact.objects.filter(organisation=48, contactorganisation__function__startswith='SEC'),
+    extra_kwargs = {
+        'rapporteur1': {
+            'limit_choices_to': Q(organisation=48, contactorganisation__function__startswith='RC'),
+        },
+        'rapporteur2': {
+            'limit_choices_to': Q(organisation=48, contactorganisation__function__startswith='RC'),
+        },
+        'secretary': {
+            'limit_choices_to': Q(organisation=48, contactorganisation__function__startswith='SEC'),
+        },
     }
 
 class ComplaintViewSet(UniModelViewSet):
@@ -71,9 +89,15 @@ class ComplaintViewSet(UniModelViewSet):
     list_fields = [ 'agency', 'stage', 'submitDate', 'decisionDate', 'result' ]
     filterset_fields = [ 'agency', 'stage', 'secretary', 'result' ]
     search_fields = [ 'agency__shortname', 'agency__organisation__longname' ]
-    relations_querysets = {
-        'rapporteur1': Contact.objects.filter(organisation=48, contactorganisation__function__startswith='RC'),
-        'rapporteur2': Contact.objects.filter(organisation=48, contactorganisation__function__startswith='RC'),
-        'secretary':   Contact.objects.filter(organisation=48, contactorganisation__function__startswith='SEC'),
+    extra_kwargs = {
+        'rapporteur1': {
+            'limit_choices_to': Q(organisation=48, contactorganisation__function__startswith='RC'),
+        },
+        'rapporteur2': {
+            'limit_choices_to': Q(organisation=48, contactorganisation__function__startswith='RC'),
+        },
+        'secretary': {
+            'limit_choices_to': Q(organisation=48, contactorganisation__function__startswith='SEC'),
+        },
     }
 

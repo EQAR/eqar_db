@@ -26,26 +26,32 @@ class ModelViewSet(ReadWriteSerializerMixin, viewsets.ModelViewSet):
         context['header'] = self.get_field_order()
         return context
 
+    def get_lookup_url_kwarg(self):
+        return(self.lookup_url_kwarg or self.lookup_field)
+
+    def is_object(self):
+        return(self.get_lookup_url_kwarg() in self.kwargs)
+
+    def is_collection(self):
+        return(not self.is_object())
+
     def get_object(self):
         """
         Returns the object the view is displaying.
         """
         queryset = self.filter_queryset(self.get_queryset())
 
-        # Perform the lookup filtering.
-        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
-
-        assert lookup_url_kwarg in self.kwargs, (
+        assert self.is_object(), (
             'Expected view %s to be called with a URL keyword argument '
             'named "%s". Fix your URL conf, or set the `.lookup_field` '
             'attribute on the view correctly.' %
-            (self.__class__.__name__, lookup_url_kwarg)
+            (self.__class__.__name__, self.get_lookup_url_kwarg())
         )
 
         if 'key' in self.request.query_params:
-            filter_kwargs = {self.request.query_params['key']: self.kwargs[lookup_url_kwarg]}
+            filter_kwargs = {self.request.query_params['key']: self.kwargs[self.get_lookup_url_kwarg()]}
         else:
-            filter_kwargs = {self.lookup_field: self.kwargs[lookup_url_kwarg]}
+            filter_kwargs = {self.lookup_field: self.kwargs[self.get_lookup_url_kwarg()]}
 
         obj = get_object_or_404(queryset, **filter_kwargs)
 
@@ -93,14 +99,6 @@ class UniModelViewSet(ModelViewSet):
             _ThisSerializer.Meta.fields = getattr(self, 'list_fields', '__all__')
         return(_ThisSerializer)
 
-    def _add_queryset_kwargs(self, target):
-        if hasattr(self, 'relations_querysets'):
-            for field, qs in self.relations_querysets.items():
-                if field in target.Meta.extra_kwargs:
-                    target.Meta.extra_kwargs[field]['queryset'] = qs
-                else:
-                    target.Meta.extra_kwargs[field] = dict(queryset=qs)
-
     def get_list_serializer_class(self):
         return(self._make_serializer_class(ListSerializer, 'list', False))
 
@@ -116,7 +114,6 @@ class UniModelViewSet(ModelViewSet):
         _ReadSerializer = self._make_serializer_class(DetailSerializer, 'detail', True)
         if hasattr(self, 'relations_count'):
             _ReadSerializer.Meta.relations_count = self.relations_count
-        self._add_queryset_kwargs(_ReadSerializer)
         return(_ReadSerializer)
 
     def get_nested_serializer_class(self):
@@ -126,6 +123,5 @@ class UniModelViewSet(ModelViewSet):
 
     def get_write_serializer_class(self):
         _WriteSerializer = self._make_serializer_class(DetailSerializer, 'write', True)
-        self._add_queryset_kwargs(_WriteSerializer)
         return(_WriteSerializer)
 

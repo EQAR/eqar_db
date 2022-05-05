@@ -2,6 +2,16 @@ from django.db.models import Manager
 from rest_framework import serializers
 from uni_db.fields import EnumField
 
+class StringRelatedField(serializers.StringRelatedField):
+    def __init__(self, *args, **kwargs):
+        kwargs.pop('limit_choices_to', None)
+        super().__init__(*args, **kwargs)
+
+class PrimaryKeyRelatedField(serializers.PrimaryKeyRelatedField):
+    def __init__(self, *args, **kwargs):
+        self.limit_choices_to = kwargs.pop('limit_choices_to', None)
+        super().__init__(*args, **kwargs)
+
 class ListSerializer(serializers.ModelSerializer):
     """
     default serializer for list view
@@ -9,6 +19,8 @@ class ListSerializer(serializers.ModelSerializer):
     relational fields as strings, and __str__ added to field list as label
     """
     _label = serializers.CharField(source='__str__', read_only=True)
+
+    serializer_related_field = StringRelatedField
 
     def __init__(self, *args, **kwargs):
         if hasattr(self.Meta, 'fields') and type(self.Meta.fields) == list:
@@ -19,7 +31,7 @@ class ListSerializer(serializers.ModelSerializer):
         super().__init__(*args, **kwargs)
 
     def build_relational_field(self, field_name, relation_info):
-        return( (serializers.StringRelatedField, { 'read_only': True }) )
+        return( (StringRelatedField, { 'read_only': True }) )
 
 class DetailSerializer(serializers.ModelSerializer):
     """
@@ -30,6 +42,8 @@ class DetailSerializer(serializers.ModelSerializer):
     """
     _label = serializers.CharField(source='__str__', read_only=True)
     _related = serializers.SerializerMethodField()
+
+    serializer_related_field = PrimaryKeyRelatedField
 
     def get__related(self, obj):
         if hasattr(self.Meta, 'relations_count'):
