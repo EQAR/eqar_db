@@ -27,7 +27,7 @@ class Member(models.Model):
     mtime = models.DateTimeField("last modified", auto_now=True)
 
     def __str__(self):
-        return('{}: {}'.format(self.name, self.organisation))
+        return(f'{self.name} ({self.cat})')
 
     class Meta:
         db_table = 'member'

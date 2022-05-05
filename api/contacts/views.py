@@ -30,6 +30,7 @@ class OrganisationViewSet(UniModelViewSet):
     filterset_fields = [ 'role', 'city', 'country' ]
     relations_count = (
         'contactorganisation_set',
+        'member',
         'octopusaccount',
         'registeredagency',
         'deqarpartner',

@@ -151,11 +151,11 @@ class OctopusAccount(models.Model):
     mtime = models.DateTimeField("last modified", auto_now=True)
 
     def __str__(self):
-        return(str(self.organisation))
+        return(self.name)
 
     def save(self, *args, **kwargs):
         # auto-generate name
-        self.name = str(self)
+        self.name = str(self.organisation)
         super().save(*args, **kwargs)
 
     class Meta:
