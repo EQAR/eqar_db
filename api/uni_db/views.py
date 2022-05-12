@@ -84,44 +84,53 @@ class UniModelViewSet(ModelViewSet):
         serializer = self.get_download_serializer_class()
         return Response(serializer(results, many=True).data)
 
+    def _add_limit_choices_to(self, target):
+        for field, q in getattr(self, 'limit_choices_to', {}).items():
+            if field in target.Meta.extra_kwargs:
+                target.Meta.extra_kwargs[field]['limit_choices_to'] = q
+            else:
+                target.Meta.extra_kwargs[field] = { 'limit_choices_to': q }
+
     def _make_serializer_class(self, baseclass, ref_name, details):
 
-        class _ThisSerializer(baseclass):
+        class ThisSerializer(baseclass):
             class Meta:
                 pass
 
-        _ThisSerializer.Meta.model = self.queryset.model
-        _ThisSerializer.Meta.ref_name = f'{self.queryset.model._meta.model_name}-{ref_name}'
-        _ThisSerializer.Meta.extra_kwargs = getattr(self, 'extra_kwargs', dict())
+        ThisSerializer.Meta.model = self.queryset.model
+        ThisSerializer.Meta.ref_name = f'{self.queryset.model._meta.model_name}-{ref_name}'
+        ThisSerializer.Meta.extra_kwargs = getattr(self, 'extra_kwargs', dict())
         if details:
-            _ThisSerializer.Meta.fields = '__all__'
+            ThisSerializer.Meta.fields = '__all__'
         else:
-            _ThisSerializer.Meta.fields = getattr(self, 'list_fields', '__all__')
-        return(_ThisSerializer)
+            ThisSerializer.Meta.fields = getattr(self, 'list_fields', '__all__')
+        return(ThisSerializer)
 
     def get_list_serializer_class(self):
         return(self._make_serializer_class(ListSerializer, 'list', False))
 
     def get_search_serializer_class(self):
-        _SearchSerializer = self._make_serializer_class(ListSerializer, 'search', False)
-        _SearchSerializer.Meta.fields = [ '_label' ]
-        return(_SearchSerializer)
+        SearchSerializer = self._make_serializer_class(ListSerializer, 'search', False)
+        SearchSerializer.Meta.fields = [ '_label' ]
+        return(SearchSerializer)
 
     def get_download_serializer_class(self):
         return(self._make_serializer_class(ListSerializer, 'download', True))
 
     def get_read_serializer_class(self):
-        _ReadSerializer = self._make_serializer_class(DetailSerializer, 'detail', True)
+        ReadSerializer = self._make_serializer_class(DetailSerializer, 'detail', True)
         if hasattr(self, 'relations_count'):
-            _ReadSerializer.Meta.relations_count = self.relations_count
-        return(_ReadSerializer)
+            ReadSerializer.Meta.relations_count = self.relations_count
+        self._add_limit_choices_to(ReadSerializer)
+        return(ReadSerializer)
 
     def get_nested_serializer_class(self):
-        _NestedSerializer = self._make_serializer_class(DetailSerializer, 'nested', True)
-        _NestedSerializer.Meta.depth = 2
-        return(_NestedSerializer)
+        NestedSerializer = self._make_serializer_class(DetailSerializer, 'nested', True)
+        NestedSerializer.Meta.depth = 2
+        return(NestedSerializer)
 
     def get_write_serializer_class(self):
-        _WriteSerializer = self._make_serializer_class(DetailSerializer, 'write', True)
-        return(_WriteSerializer)
+        WriteSerializer = self._make_serializer_class(DetailSerializer, 'write', True)
+        self._add_limit_choices_to(WriteSerializer)
+        return(WriteSerializer)
 
