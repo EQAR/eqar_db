@@ -12,14 +12,14 @@ class RegisteredAgency(models.Model):
     T_BASE_URL = 'https://data.deqar.eu/agency/'
 
     id = models.AutoField('Agency ID', primary_key=True, db_column='rid')
-    organisation = models.OneToOneField(Organisation, on_delete=models.RESTRICT, db_column='oid', blank=True, null=True)
+    organisation = models.OneToOneField(Organisation, on_delete=models.RESTRICT, db_column='oid')
     octopusAccount = models.OneToOneField(OctopusAccount, on_delete=models.RESTRICT, db_column='oaid', blank=True, null=True, verbose_name='financial account')
-    shortname = models.CharField('Acronym', max_length=255, blank=True, null=True)
+    shortname = models.CharField('Acronym', max_length=255, blank=True, editable=False)
     mainContact = models.ForeignKey(Contact, on_delete=models.RESTRICT, db_column='mainContact', blank=True, null=True,
                                         related_name='agency_main', verbose_name='main contact')
     registered = models.BooleanField(default=False)
     deqarId = models.IntegerField(db_column='deqarId', unique=True, blank=True, null=True, verbose_name='DEQAR ID')
-    registerUrl = models.CharField(editable=False, blank=True, db_column='registerUrl', max_length=255, null=True)
+    registerUrl = models.CharField(editable=False, blank=True, db_column='registerUrl', max_length=255, null=True, verbose_name='register entry URL')
     registeredSince = models.DateField(db_column='registeredSince', blank=True, null=True, verbose_name='registered since')
     validUntil = models.DateField(db_column='validUntil', blank=True, null=True, verbose_name='registered until')
     baseCountry = models.ForeignKey(Country, on_delete=models.RESTRICT, db_column='baseCountry', verbose_name='base country')
