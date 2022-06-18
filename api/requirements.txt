@@ -26,6 +26,7 @@ MarkupSafe==1.1.1
 mysqlclient==2.0.1
 openapi-codec==1.3.2
 packaging==20.9
+phonenumbers==8.12.48
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
 pyparsing==2.4.7

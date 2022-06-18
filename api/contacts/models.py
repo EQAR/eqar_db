@@ -1,6 +1,8 @@
 from django.db import models
 from uni_db.fields import EnumField
 
+import phonenumbers
+
 """
 Contacts: basic models for organisations, persons, etc.
 """
@@ -74,6 +76,19 @@ class Contact(models.Model):
             or 'NN'
         # auto-generate nameEmail
         self.nameEmail = str(self)
+        # normalize phone numbers
+        if self.phone:
+            try:
+                phone_parsed = phonenumbers.parse(self.phone, 'BE')
+                self.phone = phonenumbers.format_number(phone_parsed, phonenumbers.PhoneNumberFormat.INTERNATIONAL)
+            except phonenumbers.phonenumberutil.NumberParseException:
+                pass
+        if self.mobile:
+            try:
+                mobile_parsed = phonenumbers.parse(self.mobile, 'BE')
+                self.mobile = phonenumbers.format_number(mobile_parsed, phonenumbers.PhoneNumberFormat.INTERNATIONAL)
+            except phonenumbers.phonenumberutil.NumberParseException:
+                pass
         super().save(*args, **kwargs)
 
     def __str__(self):
