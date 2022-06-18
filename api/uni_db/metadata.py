@@ -19,8 +19,13 @@ class ExtendedMetadata(SimpleMetadata):
         self.view = view
         if view.is_object():
             self.instance = view.get_object()
+            if callable(getattr(self.instance, "get_readonly_fields", None)):
+                self.readonly_model_fields = self.instance.get_readonly_fields()
+            else:
+                self.readonly_model_fields = []
         else:
             self.instance = None
+            self.readonly_model_fields = []
         metadata = super().determine_metadata(request, view)
         metadata['field_order'] = view.get_field_order()
         return(metadata)
@@ -28,6 +33,8 @@ class ExtendedMetadata(SimpleMetadata):
     def get_field_info(self, field):
         field_info = super().get_field_info(field)
         model_field = getattr(getattr(field.parent.Meta.model, field.source, None), 'field', None)
+        if model_field and model_field.name in self.readonly_model_fields:
+            field_info['read_only'] = True
         if isinstance(field, (serializers.RelatedField, serializers.ManyRelatedField)):
             field_info['foreign_table'] = model_field.related_model._meta.object_name.lower()
             field_info['foreign_key'] = model_field.target_field.name

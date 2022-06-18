@@ -45,6 +45,12 @@ class DetailSerializer(serializers.ModelSerializer):
 
     serializer_related_field = PrimaryKeyRelatedField
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and callable(getattr(self.instance, "get_readonly_fields", None)):
+            for field in self.instance.get_readonly_fields():
+                self.fields[field].read_only = True
+
     def get__related(self, obj):
         if hasattr(self.Meta, 'relations_count'):
             reverse = []
