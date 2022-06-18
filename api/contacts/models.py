@@ -126,6 +126,7 @@ class ContactOrganisation(models.Model):
     sendOfficial = models.BooleanField("official emails?", default=False, db_column='sendOfficial')
     sendDeqar = models.BooleanField("DEQAR emails?", default=False, db_column='sendDeqar')
     sendInvoice = models.BooleanField("invoice emails?", default=False, db_column='sendInvoice')
+    onRegister = models.BooleanField("on Register entry?", default=False, db_column='onRegister')
     function = models.CharField(max_length=255, blank=True, null=True)
     mtime = models.DateTimeField("last modified", auto_now=True)
 

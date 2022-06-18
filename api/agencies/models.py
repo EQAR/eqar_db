@@ -17,8 +17,6 @@ class RegisteredAgency(models.Model):
     shortname = models.CharField('Acronym', max_length=255, blank=True, null=True)
     mainContact = models.ForeignKey(Contact, on_delete=models.RESTRICT, db_column='mainContact', blank=True, null=True,
                                         related_name='agency_main', verbose_name='main contact')
-    webContact = models.ForeignKey(Contact, on_delete=models.RESTRICT, db_column='webContact', blank=True, null=True,
-                                        related_name='agency_web', verbose_name='website contact')
     registered = models.BooleanField(default=False)
     deqarId = models.IntegerField(db_column='deqarId', unique=True, blank=True, null=True, verbose_name='DEQAR ID')
     registerUrl = models.CharField(editable=False, blank=True, db_column='registerUrl', max_length=255, null=True)
