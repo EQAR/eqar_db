@@ -86,7 +86,7 @@ class Contact(models.Model):
 
     class Meta:
         db_table = 'contact'
-        ordering = [ 'lastName', 'firstName' ]
+        ordering = [ 'firstName', 'lastName' ]
         verbose_name = 'person'
 
 
@@ -116,7 +116,7 @@ class Organisation(models.Model):
 
     class Meta:
         db_table = 'organisation'
-        ordering = [ 'longname' ]
+        ordering = [ 'name' ]
 
 
 class ContactOrganisation(models.Model):
