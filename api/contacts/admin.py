@@ -2,6 +2,8 @@ from django import forms
 from django.contrib import admin
 from django.db.models import Q
 
+from uni_db.admin import ModelAdmin
+
 from contacts.models import Contact, Organisation, Country, OctopusAccount, Role, DeqarPartner, DeqarConnectPartner, ContactOrganisation
 
 """
@@ -76,28 +78,28 @@ Main admin modules
 """
 
 @admin.register(Contact)
-class ContactAdmin(admin.ModelAdmin):
+class ContactAdmin(ModelAdmin):
     inlines = [ContactOrganisationInline]
     search_fields = [ 'firstName', 'lastName', 'email' ]
     readonly_fields = [ 'mtime' ]
 
 @admin.register(Organisation)
-class OrganisationAdmin(admin.ModelAdmin):
+class OrganisationAdmin(ModelAdmin):
     inlines = [ContactOrganisationInline, OctopusInline, DeqarInline, DeqarConnectInline]
     search_fields = [ 'longname', 'acronym', 'country__name', 'city' ]
     readonly_fields = [ 'mtime' ]
 
 @admin.register(Country)
-class CountryAdmin(admin.ModelAdmin):
+class CountryAdmin(ModelAdmin):
     search_fields = [ 'name', 'name_local' ]
     
 @admin.register(DeqarPartner)
-class DeqarPartnerAdmin(admin.ModelAdmin):
+class DeqarPartnerAdmin(ModelAdmin):
     readonly_fields = [ 'mtime', 'pic', 'pic_name' ]
     form = DeqarForm
 
 @admin.register(DeqarConnectPartner)
-class DeqarConnectAdmin(admin.ModelAdmin):
+class DeqarConnectAdmin(ModelAdmin):
     list_display = [ 'organisation', 'id', 'type' ]
     list_filter = [ 'type' ]
     readonly_fields = [ 'mtime', 'pic' ]

@@ -3,6 +3,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.renderers import BaseRenderer
 
+import phonenumbers
+
 from lxml import etree
 
 from uni_db.views import ModelViewSet, UniModelViewSet
@@ -92,11 +94,6 @@ class GxpAddressBook(APIView):
     permission_classes = []
     renderer_classes = (XMLRenderer,)
 
-    phone_replace = [
-        ('/^\+/',       '00'),
-        ('/[^0-9]+/',   ''),
-    ]
-
     group_id = "2"
     group_name = "EQAR DB"
 
@@ -105,6 +102,13 @@ class GxpAddressBook(APIView):
             e = etree.Element(tag)
             e.text = text
             return e
+
+        def format_phone_number(raw_number):
+            try:
+                parsed = phonenumbers.parse(raw_number)
+                return phonenumbers.format_out_of_country_calling_number(parsed, 'BE')
+            except:
+                return raw_number
 
         abook = etree.Element("AddressBook")
         group = etree.Element("pbgroup")
@@ -117,15 +121,14 @@ class GxpAddressBook(APIView):
             contact.append(TextElement("LastName", item.contact.lastName))
             contact.append(TextElement("Department", item.organisation.name))
             contact.append(TextElement("Group", self.group_id))
-            #$phone->phonenumber = preg_replace($patterns, $replace, $row['phone']);
             if item.contact.phone:
                 phone = etree.Element("Phone", type="Work")
-                phone.append(TextElement("phonenumber", item.contact.phone))
+                phone.append(TextElement("phonenumber", format_phone_number(item.contact.phone)))
                 phone.append(TextElement("accountindex", "1"))
                 contact.append(phone)
             if item.contact.mobile:
                 phone = etree.Element("Phone", type="Cell")
-                phone.append(TextElement("phonenumber", item.contact.mobile))
+                phone.append(TextElement("phonenumber", format_phone_number(item.contact.mobile)))
                 phone.append(TextElement("accountindex", "1"))
                 contact.append(phone)
             abook.append(contact)

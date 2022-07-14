@@ -1,6 +1,8 @@
 from django.db import models
 from uni_db.fields import EnumField
 
+import phonenumbers
+
 """
 Contacts: basic models for organisations, persons, etc.
 """
@@ -74,6 +76,19 @@ class Contact(models.Model):
             or 'NN'
         # auto-generate nameEmail
         self.nameEmail = str(self)
+        # normalize phone numbers
+        if self.phone:
+            try:
+                phone_parsed = phonenumbers.parse(self.phone, 'BE')
+                self.phone = phonenumbers.format_number(phone_parsed, phonenumbers.PhoneNumberFormat.INTERNATIONAL)
+            except phonenumbers.phonenumberutil.NumberParseException:
+                pass
+        if self.mobile:
+            try:
+                mobile_parsed = phonenumbers.parse(self.mobile, 'BE')
+                self.mobile = phonenumbers.format_number(mobile_parsed, phonenumbers.PhoneNumberFormat.INTERNATIONAL)
+            except phonenumbers.phonenumberutil.NumberParseException:
+                pass
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -86,7 +101,7 @@ class Contact(models.Model):
 
     class Meta:
         db_table = 'contact'
-        ordering = [ 'lastName', 'firstName' ]
+        ordering = [ 'firstName', 'lastName' ]
         verbose_name = 'person'
 
 
@@ -116,7 +131,7 @@ class Organisation(models.Model):
 
     class Meta:
         db_table = 'organisation'
-        ordering = [ 'longname' ]
+        ordering = [ 'name' ]
 
 
 class ContactOrganisation(models.Model):
@@ -126,6 +141,7 @@ class ContactOrganisation(models.Model):
     sendOfficial = models.BooleanField("official emails?", default=False, db_column='sendOfficial')
     sendDeqar = models.BooleanField("DEQAR emails?", default=False, db_column='sendDeqar')
     sendInvoice = models.BooleanField("invoice emails?", default=False, db_column='sendInvoice')
+    onRegister = models.BooleanField("on Register entry?", default=False, db_column='onRegister')
     function = models.CharField(max_length=255, blank=True, null=True)
     mtime = models.DateTimeField("last modified", auto_now=True)
 

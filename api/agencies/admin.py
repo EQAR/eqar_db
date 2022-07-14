@@ -2,6 +2,8 @@ from django import forms
 from django.contrib import admin
 from django.db.models import Q
 
+from uni_db.admin import ModelAdmin
+
 from agencies.models import RegisteredAgency, Applications, ApplicationRole, ApplicationInterest, ApplicationClarification, ChangeReport, Complaint, AgencyUpdate
 from contacts.models import Contact, Organisation, ContactOrganisation
 
@@ -56,7 +58,7 @@ class ApplicationAdminForm(forms.ModelForm):
             )
 
 @admin.register(Applications)
-class ApplicationAdmin(admin.ModelAdmin):
+class ApplicationAdmin(ModelAdmin):
     form = ApplicationAdminForm
     list_display = [ 'id', 'agency', 'type', 'submitDate', 'stage', 'result' ]
     list_filter = [ 'type', 'submitDate', 'stage', 'result' ]
@@ -65,28 +67,28 @@ class ApplicationAdmin(admin.ModelAdmin):
     readonly_fields = [ 'mtime' ]
 
 @admin.register(AgencyUpdate)
-class UpdateAdmin(admin.ModelAdmin):
+class UpdateAdmin(ModelAdmin):
     list_display = [ 'agency', 'type', 'year', 'country', 'source' ]
     list_filter = [ 'agency', 'type', 'year', 'country', 'source' ]
     search_fields = [ 'agency__shortname', 'agency__organisation__longname', 'country__name', 'country__iso2', 'country__iso3' ]
     readonly_fields = [ 'mtime' ]
 
 @admin.register(RegisteredAgency)
-class AgencyAdmin(admin.ModelAdmin):
+class AgencyAdmin(ModelAdmin):
     list_display = [ 'shortname', 'deqarId', 'baseCountry', 'registered', 'registeredSince', 'validUntil' ]
     list_filter = [ 'registered', 'registeredSince', 'validUntil' ]
     search_fields = [ 'shortname', 'organisation__longname', 'baseCountry__name', 'baseCountry__iso2', 'baseCountry__iso3' ]
     readonly_fields = [ 'registerUrl', 'mtime' ]
 
 @admin.register(ChangeReport)
-class ChangeReportAdmin(admin.ModelAdmin):
+class ChangeReportAdmin(ModelAdmin):
     list_display = [ 'id', 'agency', 'submitDate', 'stage', 'result' ]
     list_filter = [ 'submitDate', 'stage', 'result' ]
     search_fields = [ 'agency__shortname', 'agency__organisation__longname' ]
     readonly_fields = [ 'mtime' ]
 
 @admin.register(Complaint)
-class ComplaintAdmin(admin.ModelAdmin):
+class ComplaintAdmin(ModelAdmin):
     list_display = [ 'id', 'agency', 'submitDate', 'stage', 'result' ]
     list_filter = [ 'submitDate', 'stage', 'result' ]
     search_fields = [ 'agency__shortname', 'agency__organisation__longname' ]
