@@ -41,8 +41,8 @@ class OrganisationViewSet(UniModelViewSet):
 
 class ContactOrganisationViewSet(UniModelViewSet):
     queryset = ContactOrganisation.objects.all()
-    list_fields = [ 'contact', 'organisation', 'sendOfficial', 'sendDeqar', 'sendInvoice' ]
-    filterset_fields = [ 'contact', 'organisation', 'sendOfficial', 'sendDeqar' ]
+    list_fields = [ 'contact', 'organisation', 'sendOfficial', 'sendDeqar', 'sendInvoice', 'nameOnRegister', 'emailOnRegister', 'phoneOnRegister' ]
+    filterset_fields = [ 'contact', 'organisation', 'sendOfficial', 'sendDeqar', 'sendInvoice', 'nameOnRegister', 'emailOnRegister', 'phoneOnRegister' ]
 
 class OctopusAccountViewSet(UniModelViewSet):
     queryset = OctopusAccount.objects.all()
