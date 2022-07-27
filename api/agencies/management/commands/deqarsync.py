@@ -1,13 +1,182 @@
-from datetime import date
+from datetime import date, datetime, timezone
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db.models import Value
 from django.db.models.functions import Concat
+from django.utils.html import escape
 
-from agencies.deqarclient import EqarApi
+import deqarclient.agency
+from deqarclient.api import EqarApi
+from deqarclient.errors import HttpError
+
 from agencies.models import RegisteredAgency
-from contacts.models import Contact
+from contacts.models import Contact, ContactOrganisation
+
+import phonenumbers
+
+import json
+
+class RemoteAgency(deqarclient.agency.Agency):
+
+    def __init__(self, api, pk, command):
+        self.command = command
+        self.name_primary = None
+        self.acronym_primary = None
+        self.is_changed = False
+        super().__init__(api, pk)
+
+    def update(self, local):
+        self.update_address(local)
+        self.update_contact_names(local)
+        self.update_contact_emails(local)
+        self.update_contact_phones(local)
+
+    def update_address(self, local):
+        # postal address
+        local_address = '<p>' + \
+            '<br>'.join([ escape(line) for line in [
+                local.instance.organisation.address1,
+                local.instance.organisation.address2,
+                f'{local.instance.organisation.postcode} {local.instance.organisation.city}',
+            ] if line ]) + \
+            '</p>'
+        if self.data['address'] != local_address:
+            self.command.stdout.write(self.command.style.SUCCESS(f'  > address: {"; ".join(self.data["address"].splitlines())} -> {"; ".join(local_address.splitlines())}'))
+            self.data['address'] = local_address
+            self.is_changed = True
+        # country
+        local_country = self.api.Countries.get(local.instance.organisation.country.iso3)
+        if self.data['country'] != local_country['id']:
+            self.command.stdout.write(self.command.style.SUCCESS(f'  > country: {self.api.Countries.get(self.data["country"])["name_english"]} -> {local_country["name_english"]}'))
+            self.data['country'] = local_country['id']
+            self.is_changed = True
+
+    def normalize_phone(self, phone):
+        try:
+            parsed = phonenumbers.parse(phone, 'BE')
+            return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.INTERNATIONAL)
+        except phonenumbers.phonenumberutil.NumberParseException:
+            return phone
+
+    def update_contact_names(self, local):
+        # contact person name(s)
+        contact_person = ', '.join({ i['contact__person'] for i in local.instance.organisation.contactorganisation_set.filter(nameOnRegister=True).values('contact__person') }) or 'not applicable'
+        if self.data['contact_person'] != contact_person:
+            self.command.stdout.write(self.command.style.SUCCESS(f"  > contact: {self.data['contact_person']} -> {contact_person}"))
+            self.data['contact_person'] = contact_person
+            self.is_changed = True
+
+    def update_contact_emails(self, local):
+        # emails
+        remote_emails = { i['email']: i for i in self.data['emails'] }
+        local_emails = { i['contact__email'] for i in local.instance.organisation.contactorganisation_set.filter(emailOnRegister=True).values('contact__email') if i['contact__email'] }
+        for email in list(remote_emails): # list() needed b/c we cannot change the set while iterating over itself
+            if email not in local_emails:
+                self.command.stdout.write(self.command.style.WARNING(f"  > - {email}"))
+                del remote_emails[email]
+        for email in local_emails:
+            if email not in remote_emails:
+                remote_emails[email] = { 'email': email }
+                self.command.stdout.write(self.command.style.SUCCESS(f"  > + {email}"))
+        if self.data["emails"] != list(remote_emails.values()):
+            self.data["emails"] = list(remote_emails.values())
+            self.is_changed = True
+
+    def update_contact_phones(self, local):
+        # phone number(s)
+        remote_phones = { self.normalize_phone(i['phone']): i for i in self.data['phone_numbers'] }
+        local_phones = { i['contact__phone'] for i in local.instance.organisation.contactorganisation_set.filter(phoneOnRegister=True).values('contact__phone') if i['contact__phone'] }
+        for phone in list(remote_phones):
+            if phone not in local_phones:
+                self.command.stdout.write(self.command.style.WARNING(f"  > - {phone}"))
+                del remote_phones[phone]
+        for phone in local_phones:
+            if phone not in remote_phones:
+                remote_phones[phone] = { 'phone': phone }
+                self.command.stdout.write(self.command.style.SUCCESS(f"  > + {phone}"))
+        if self.data["phone_numbers"] != list(remote_phones.values()):
+            self.data["phone_numbers"] = list(remote_phones.values())
+            self.is_changed = True
+
+    def save_if_changed(self):
+        if self.is_changed:
+            self.command.stdout.write(self.command.style.SUCCESS(f'  > saving remote: {self.acronym_primary}'))
+            try:
+                self.save(comment='synchronised by EQAR-DB')
+            except:
+                self.command.stdout.write(json.dumps(self.data))
+                raise
+            self.is_changed = False
+        else:
+            self.command.stdout.write(f'  = remote {self.acronym_primary} unchanged')
+
+
+class LocalObject:
+
+    def __init__(self, instance, command):
+        self.instance = instance
+        self.command = command
+        self.is_changed = False
+
+    def update_property(self, prop, remote_value):
+        """
+        Updates local object's attribute to value remote, if different
+        """
+        if getattr(self.instance, prop) != remote_value:
+            self.command.stdout.write(self.command.style.SUCCESS(f'  < {prop}: {getattr(self.instance, prop)} -> {remote_value}'))
+            setattr(self.instance, prop, remote_value)
+            self.is_changed = True
+
+    def parse_remote_date(self, remote_value):
+        if remote_value:
+            return date.fromisoformat(remote_value)
+        else:
+            return None
+
+    def save_if_changed(self):
+        if self.is_changed:
+            self.command.stdout.write(self.command.style.SUCCESS(f'  < saving local: {self.instance}'))
+            self.instance.save()
+            self.is_changed = False
+        else:
+            self.command.stdout.write(f'  = local {self.instance} unchanged')
+
+class LocalAgency(LocalObject):
+
+    def update(self, remote):
+        self.update_property('registered', remote.data['is_registered'])
+        self.update_property('registeredSince', self.parse_remote_date(remote.data['registration_start']))
+        self.update_property('validUntil', self.parse_remote_date(remote.data['registration_valid_to']))
+        self.update_property('shortname', remote.acronym_primary)
+
+class LocalOrganisation(LocalObject):
+
+    def update(self, remote):
+        self.update_property('acronym', remote.acronym_primary)
+        self.update_property('longname', remote.name_primary)
+
+
+class AgencySyncer:
+
+    def __init__(self, api, local, command):
+        self.command = command
+        self.local = LocalAgency(local, command)
+        self.local_organisation = LocalOrganisation(local.organisation, command)
+        self.remote = RemoteAgency(api, local.deqarId, command)
+
+    def sync(self):
+        self.command.stdout.write(f'- Syncing {self.remote.acronym_primary} (deqar_id={self.remote.id} <-> local_pk={self.local.instance.id}):')
+        if self.remote.acronym_primary != self.local.instance.shortname:
+            self.command.stdout.write(self.command.style.NOTICE(f'  ! acronyms mismatch: remote={self.remote.acronym_primary} != local={self.local.instance.shortname}'))
+        self.local.update(self.remote)
+        self.local_organisation.update(self.remote)
+        self.remote.update(self.local)
+
+    def commit(self):
+        self.local.save_if_changed()
+        self.local_organisation.save_if_changed()
+        self.remote.save_if_changed()
 
 
 class Command(BaseCommand):
@@ -23,107 +192,24 @@ class Command(BaseCommand):
         parser.add_argument('-n', '--dry-run', action='store_true',
                             help = 'check differences and only tell what would be synchronised')
 
-    def sync_property(self, remote, local_object, attribute, commit=False):
-        """
-        Updates local_object's attribute to value remote, if different, and saves local_object to database.
-        """
-        if local_object is not None and hasattr(local_object, attribute) and getattr(local_object, attribute) != remote:
-            self.stdout.write(self.style.SUCCESS('  * update {}: {} -> {}'.format(attribute, getattr(local_object, attribute), remote)))
-            if commit:
-                setattr(local_object, attribute, remote)
-                local_object.save()
-            return True
-        else:
-            return False
-
-    def sync_contact(self, remote, local, commit=False):
-        """
-        Checks if contact person is known by email or name, and updates web_contact on local accordingly. If contact is not found, it is created.
-        """
-        contact = None
-
-        # first try is by email address, and we use whichever matches first:
-        for email in remote['emails']:
-            try:
-                contact = Contact.objects.get(email=email['email'])
-            except Contact.DoesNotExist:
-                pass
-            else:
-                break
-
-        # if not found, we will try by name instead:
-        if contact is None:
-            matches = Contact.objects.annotate(name_search=Concat('firstName', Value(' '), 'lastName')).filter(name_search=remote['contact_person'], organisation=local.organisation)
-            if len(matches) > 0:
-                contact = matches[0]
-            else:
-                # if that didn't work either AND we do have an email address, we create a new contact:
-                if remote['emails']:
-                    contact = Contact(
-                        firstName=remote['contact_person'].split(' ')[0],
-                        lastName=' '.join(remote['contact_person'].split(' ')[1:]),
-                        email=remote['emails'][0]['email']
-                    )
-                    self.stdout.write(self.style.WARNING('  * created contact: {}'.format(contact)))
-                    if commit:
-                        contact.save()
-                        contact.organisation.add(local.organisation)
-                        contact.contactorganisation_set.update(function='[website contact added by sync]')
-
-        # finally, we update the web_contact field if the contact we found/created differs
-        if contact is not None and contact != local.web_contact:
-            self.stdout.write(self.style.SUCCESS('  * update web_contact: {} -> {}'.format(local.web_contact, contact)))
-            if commit:
-                local.web_contact = contact
-                local.save()
-            return True
-        else:
-            return False
-
     def handle(self, *args, **options):
 
         try:
-            api = EqarApi(options['base'] or settings.DEQAR_BASE, options['token'] or settings.DEQAR_TOKEN)
-
+            api = EqarApi(options['base'] or settings.DEQAR_BASE, token=(options['token'] or settings.DEQAR_TOKEN), request_timeout=600)
         except:
             raise CommandError('Error connecting to DEQAR API.')
 
+        agencies = RegisteredAgency.objects.exclude(deqarId__isnull=True)
         if options['agency_id']:
-            agencies = options['agency_id']
-        else:
-            agencies = [ agency['id'] for agency in api.get('/adminapi/v1/browse/all/agencies/', kwargs=dict(limit=100))['results'] ]
+            agencies = agencies.filter(id=options['agency_id'])
 
-        for remote_id in agencies:
-
+        for agency in agencies:
             try:
-                remote = api.get('/adminapi/v1/agencies/{}/'.format(remote_id))
-            except:
-                self.stdout.write(self.style.NOTICE('- failed to retrieve agency id={}, skipped.'.format(remote_id)))
-
-            try:
-                local = RegisteredAgency.objects.get(deqar_id=remote['id'])
-            except Agency.DoesNotExist:
-                self.stdout.write('{acronym_primary} not found with deqar_id={id}'.format(**remote))
+                syncer = AgencySyncer(api, agency, self)
+            except HttpError:
+                self.stdout.write(self.style.NOTICE(f'- failed to retrieve agency id={agency.deqarId}, skipped.'))
             else:
-                self.stdout.write('- Syncing {} (deqar_id={} / local_pk={}):'.format(remote['acronym_primary'], remote['id'], local.id))
-
-                any_changes = False
-
-                any_changes |= self.sync_property(remote['acronym_primary'],                            local,              'shortname',            commit=(not options['dry_run']))
-                any_changes |= self.sync_property(remote['acronym_primary'],                            local.organisation, 'acronym',              commit=(not options['dry_run']))
-                any_changes |= self.sync_property(remote['name_primary'],                               local.organisation, 'longname',             commit=(not options['dry_run']))
-                any_changes |= self.sync_property(date.fromisoformat(remote['registration_start']),     local,              'registered_since',     commit=(not options['dry_run']))
-                any_changes |= self.sync_property(date.fromisoformat(remote['registration_valid_to']),  local,              'valid_until',          commit=(not options['dry_run']))
-                any_changes |= self.sync_property(remote['country']['iso_3166_alpha3'],                 local,              'base_country_id',      commit=(not options['dry_run']))
-                any_changes |= self.sync_contact(remote,                                                local,                                      commit=(not options['dry_run']))
-
-                if not any_changes:
-                    self.stdout.write('  = unchanged')
-
-        self.stdout.write(self.style.WARNING('\nAgencies not synchronised:'))
-
-        for agency in RegisteredAgency.objects.exclude(deqar_id__in=agencies):
-            self.stdout.write("- {} (deqar_id={})".format(agency, agency.deqar_id or 'NULL'))
-
-        self.stdout.write(self.style.SUCCESS('\nDone.'))
+                syncer.sync()
+                if not options['dry_run']:
+                    syncer.commit()
 

@@ -31,8 +31,6 @@ class RegisteredAgency(models.Model):
         return(self.shortname or f'[id={self.id}]')
 
     def save(self, *args, **kwargs):
-        if self.organisation is not None and self.organisation.acronym:
-            self.shortname = self.organisation.acronym
         if self.deqarId:
             slug = slugify(f'{self.deqarId} {str(self)}')
             self.registerUrl = f'{self.T_BASE_URL}{slug}'
@@ -42,6 +40,12 @@ class RegisteredAgency(models.Model):
 
     def get_absolute_url(self):
         return(self.registerUrl)
+
+    def get_readonly_fields(self):
+        if self.deqarId:
+            return(['deqarId', 'registeredSince', 'validUntil', 'registered', 'baseCountry'])
+        else:
+            return([])
 
     class Meta:
         db_table = 'registeredAgency'

@@ -129,6 +129,15 @@ class Organisation(models.Model):
         self.alt_name = f'{self.longname} ({self.acronym})' if self.acronym and self.longname else self.longname or self.acronym
         super().save(*args, **kwargs)
 
+    def get_readonly_fields(self):
+        try:
+            if self.registeredagency.deqarId:
+                return([ 'longname', 'acronym', 'country', 'role' ])
+            else:
+                return([])
+        except Organisation.registeredagency.RelatedObjectDoesNotExist:
+            return([])
+
     class Meta:
         db_table = 'organisation'
         ordering = [ 'name' ]
@@ -141,7 +150,9 @@ class ContactOrganisation(models.Model):
     sendOfficial = models.BooleanField("official emails?", default=False, db_column='sendOfficial')
     sendDeqar = models.BooleanField("DEQAR emails?", default=False, db_column='sendDeqar')
     sendInvoice = models.BooleanField("invoice emails?", default=False, db_column='sendInvoice')
-    onRegister = models.BooleanField("on Register entry?", default=False, db_column='onRegister')
+    nameOnRegister = models.BooleanField("name on Register?", default=False, db_column='nameOnRegister')
+    emailOnRegister = models.BooleanField("email on Register?", default=False, db_column='emailOnRegister')
+    phoneOnRegister = models.BooleanField("phone on Register?", default=False, db_column='phoneOnRegister')
     function = models.CharField(max_length=255, blank=True, null=True)
     mtime = models.DateTimeField("last modified", auto_now=True)
 
