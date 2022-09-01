@@ -89,6 +89,11 @@ class Applications(models.Model):
         ('Initial', 'Initial application for registration'),
         ('Renewal', 'Application for renewal of registration'),
     ]
+    REVIEW_CHOICES = [
+        ('Full',        'Full review'),
+        ('Focused',     'Focused review'),
+        ('Targeted',    'Targeted review'),
+    ]
     STAGE_CHOICES = [
         ('1. Eligibility check', '1. Eligibility check'),
         ('2. Waiting report', '2. Waiting report'),
@@ -123,6 +128,7 @@ class Applications(models.Model):
     selectName = models.CharField(editable=False, blank=True, db_column='selectName', max_length=255, null=True)
     submitDate = models.DateField("submitted on", db_column='submitDate', blank=False, null=False)
     type = EnumField(choices=TYPE_CHOICES, blank=False)
+    review = EnumField("type of review", choices=REVIEW_CHOICES, blank=False, default='Full')
     stage = EnumField(choices=STAGE_CHOICES, blank=False)
     eligibilityDate = models.DateField("eligibility confirmed on", db_column='eligibilityDate', blank=True, null=True)
     reportExpected = models.DateField("report expected by", db_column='reportExpected', blank=True, null=True)
