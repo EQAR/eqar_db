@@ -129,6 +129,8 @@ class Applications(models.Model):
     submitDate = models.DateField("submitted on", db_column='submitDate', blank=False, null=False)
     type = EnumField(choices=TYPE_CHOICES, blank=False)
     review = EnumField("type of review", choices=REVIEW_CHOICES, blank=False, default='Full')
+    previous = models.ForeignKey('self',    on_delete=models.RESTRICT, blank=True, null=True,
+                                            related_name='following', verbose_name='previous application')
     stage = EnumField(choices=STAGE_CHOICES, blank=False)
     eligibilityDate = models.DateField("eligibility confirmed on", db_column='eligibilityDate', blank=True, null=True)
     reportExpected = models.DateField("report expected by", db_column='reportExpected', blank=True, null=True)
@@ -145,6 +147,19 @@ class Applications(models.Model):
     coordinator =   models.ForeignKey(Organisation, on_delete=models.RESTRICT, db_column='coordinator', blank=True, null=True )
     roles =         models.ManyToManyField('contacts.Contact', through='ApplicationRole', related_name='application_role')
     interests =     models.ManyToManyField('contacts.Contact', through='ApplicationInterest', related_name='application_interest')
+    inherit_2_1 = models.BooleanField("inherit ESG 2.1", default=False)
+    inherit_2_2 = models.BooleanField("inherit ESG 2.2", default=False)
+    inherit_2_3 = models.BooleanField("inherit ESG 2.3", default=False)
+    inherit_2_4 = models.BooleanField("inherit ESG 2.4", default=False)
+    inherit_2_5 = models.BooleanField("inherit ESG 2.5", default=False)
+    inherit_2_6 = models.BooleanField("inherit ESG 2.6", default=False)
+    inherit_2_7 = models.BooleanField("inherit ESG 2.7", default=False)
+    inherit_3_1 = models.BooleanField("inherit ESG 3.1", default=False)
+    inherit_3_2 = models.BooleanField("inherit ESG 3.2", default=False)
+    inherit_3_3 = models.BooleanField("inherit ESG 3.3", default=False)
+    inherit_3_4 = models.BooleanField("inherit ESG 3.4", default=False)
+    inherit_3_5 = models.BooleanField("inherit ESG 3.5", default=False)
+    inherit_3_6 = models.BooleanField("inherit ESG 3.6", default=False)
     panel_2_1 = EnumField("ESG 2.1 panel/rapporteurs/RC", choices=PANEL_CHOICES, blank=True, null=True)
     panel_2_2 = EnumField("ESG 2.2", choices=PANEL_CHOICES, blank=True, null=True)
     panel_2_3 = EnumField("ESG 2.3", choices=PANEL_CHOICES, blank=True, null=True)
@@ -192,7 +207,25 @@ class Applications(models.Model):
 
     def save(self, *args, **kwargs):
         self.selectName = str(self)
+        if self.type == 'Renewal' or self.review == 'Focused':
+            self.previous = self.agency.applications_set.filter(id__lt=self.id).order_by('id').last()
+        else:
+            self.previous = None
+        for esg in [ '2_1', '2_2', '2_3', '2_4', '2_5', '2_6', '2_7', '3_1', '3_2', '3_3', '3_4', '3_5', '3_6' ]:
+            if self.previous and self.review in [ 'Focused', 'Targeted' ] and getattr(self, f'inherit_{esg}'):
+                setattr(self, f'panel_{esg}', getattr(self.previous, f'panel_{esg}'))
+                setattr(self, f'rapp_{esg}', getattr(self.previous, f'rapp_{esg}'))
+                setattr(self, f'rc_{esg}', getattr(self.previous, f'rc_{esg}'))
         super().save(*args, **kwargs)
+
+    def get_readonly_fields(self):
+        readonly_fields = [ 'previous' ]
+        for esg in [ '2_1', '2_2', '2_3', '2_4', '2_5', '2_6', '2_7', '3_1', '3_2', '3_3', '3_4', '3_5', '3_6' ]:
+            if getattr(self, f'inherit_{esg}'):
+                readonly_fields.append(f'panel_{esg}')
+                readonly_fields.append(f'rapp_{esg}')
+                readonly_fields.append(f'rc_{esg}')
+        return readonly_fields
 
     class Meta:
         db_table = 'applications'
