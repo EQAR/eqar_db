@@ -101,6 +101,7 @@ class Applications(models.Model):
         ('-- Withdrawn', '-- Withdrawn'),
     ]
     PANEL_CHOICES = [
+        ('Compliance',              'Compliance'),
         ('Full compliance',         'Full compliance'),
         ('Substantial compliance',  'Substantial compliance'),
         ('Partial compliance',      'Partial compliance'),
