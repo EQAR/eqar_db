@@ -1,8 +1,10 @@
+from django.core.exceptions import ValidationError, NON_FIELD_ERRORS
 from django.db import models
 from django.template.defaultfilters import slugify
 
 from contacts.models import Organisation, Contact, OctopusAccount, Country, ContactOrganisation
 from uni_db.fields import EnumField
+from uni_db.validators import validate_date_in_past
 
 """
 Agencies: everything related to registered agencies, applications, etc.
@@ -126,7 +128,7 @@ class Applications(models.Model):
     id = models.AutoField('ID', primary_key=True, db_column='aid')
     agency = models.ForeignKey(RegisteredAgency, on_delete=models.RESTRICT, db_column='rid')
     selectName = models.CharField(editable=False, blank=True, db_column='selectName', max_length=255, null=True)
-    submitDate = models.DateField("submitted on", db_column='submitDate', blank=False, null=False)
+    submitDate = models.DateField("submitted on", db_column='submitDate', blank=False, null=False, validators=[validate_date_in_past])
     type = EnumField(choices=TYPE_CHOICES, blank=False)
     review = EnumField("type of review", choices=REVIEW_CHOICES, blank=False, default='Full')
     previous = models.ForeignKey('self',    on_delete=models.RESTRICT, blank=True, null=True,
@@ -226,6 +228,23 @@ class Applications(models.Model):
                 readonly_fields.append(f'rapp_{esg}')
                 readonly_fields.append(f'rc_{esg}')
         return readonly_fields
+
+    def clean(self, *args, **kwargs):
+        super().clean(*args, **kwargs)
+        errors = {}
+        if self.type == 'Initial' and self.review == 'Targeted':
+            errors["review"] = "Targeted reviews allowed only for Renewal."
+        if self.stage == '8. Completed' and self.result is None:
+            errors["stage"] = "Decision needs to be specified for completed decisions."
+        if self.eligibilityDate and self.eligibilityDate < self.submitDate:
+            errors["eligibilityDate"] = "Cannot be before submission date."
+        if self.result and self.decisionDate is None:
+            errors["decisionDate"] = "Date must be specified."
+        for esg in [ '2_1', '2_2', '2_3', '2_4', '2_5', '2_6', '2_7', '3_1', '3_2', '3_3', '3_4', '3_5', '3_6' ]:
+            if getattr(self, f'inherit_{esg}') and self.review not in [ 'Focused', 'Targeted' ]:
+                errors[NON_FIELD_ERRORS] = "Inheriting compliance is only possible for focused or targeted reviews."
+        if errors:
+            raise ValidationError(errors)
 
     class Meta:
         db_table = 'applications'
