@@ -1,5 +1,9 @@
+from django.core.exceptions import ValidationError, NON_FIELD_ERRORS
 from django.db.models import Manager
+
 from rest_framework import serializers
+from rest_framework.settings import api_settings
+
 from uni_db.fields import EnumField
 
 class StringRelatedField(serializers.StringRelatedField):
@@ -50,6 +54,21 @@ class DetailSerializer(serializers.ModelSerializer):
         if self.instance and callable(getattr(self.instance, "get_readonly_fields", None)):
             for field in self.instance.get_readonly_fields():
                 self.fields[field].read_only = True
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        obj = self.Meta.model(**attrs)
+        try:
+            obj.clean()
+        except ValidationError as error:
+            try:
+                messages = error.message_dict
+                if NON_FIELD_ERRORS in messages:
+                    messages[api_settings.NON_FIELD_ERRORS_KEY] = messages.pop(NON_FIELD_ERRORS)
+            except AttributeError:
+                messages = error.messages
+            raise serializers.ValidationError(messages)
+        return attrs
 
     def get__related(self, obj):
         if hasattr(self.Meta, 'relations_count'):
