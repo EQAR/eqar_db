@@ -4,8 +4,14 @@ from django.db.models import Q
 
 from uni_db.admin import ModelAdmin
 
-from agencies.models import RegisteredAgency, Applications, ApplicationRole, ApplicationInterest, ApplicationClarification, ChangeReport, Complaint, AgencyUpdate
+from agencies.models import *
 from contacts.models import Contact, Organisation, ContactOrganisation
+
+class StandardInline(admin.StackedInline):
+    model = ApplicationStandard
+    can_delete = False
+    def has_add_permission(self, request, obj=None):
+        return False
 
 class RoleInline(admin.TabularInline):
     model = ApplicationRole
@@ -63,7 +69,8 @@ class ApplicationAdmin(ModelAdmin):
     list_display = [ 'id', 'agency', 'type', 'submitDate', 'stage', 'result' ]
     list_filter = [ 'type', 'submitDate', 'stage', 'result' ]
     search_fields = [ 'agency__shortname', 'agency__organisation__longname' ]
-    inlines = [RoleInline, InterestInline, ClarificationInline]
+    autocomplete_fields = [ 'coordinator' ]
+    inlines = [RoleInline, InterestInline, ClarificationInline, StandardInline]
     readonly_fields = [ 'mtime' ]
 
 @admin.register(AgencyUpdate)
@@ -93,4 +100,12 @@ class ComplaintAdmin(ModelAdmin):
     list_filter = [ 'submitDate', 'stage', 'result' ]
     search_fields = [ 'agency__shortname', 'agency__organisation__longname' ]
     readonly_fields = [ 'mtime' ]
+
+@admin.register(EsgVersion)
+class EsgVersionAdmin(ModelAdmin):
+    list_display = [ 'id', 'name', 'active' ]
+
+@admin.register(EsgStandard)
+class EsgStandardAdmin(ModelAdmin):
+    list_display = [ 'id', 'version', 'part', 'number', 'title' ]
 

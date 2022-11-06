@@ -6,6 +6,22 @@ from agencies.models import *
 
 from contacts.models import Contact, Organisation
 
+class EsgVersionViewSet(UniModelViewSet):
+    queryset = EsgVersion.objects.all()
+    unidb_options = { 'readonly': True }
+    relations_count = (
+        'esgstandard_set',
+    )
+
+class EsgStandardViewSet(UniModelViewSet):
+    queryset = EsgStandard.objects.all()
+    list_fields = [ 'version', 'part', 'number', 'title' ]
+    filterset_fields = [ 'version', 'part' ]
+    unidb_options = { 'readonly': True }
+    relations_count = (
+        'applicationstandard_set',
+    )
+
 class AgencyViewSet(UniModelViewSet):
     queryset = RegisteredAgency.objects.all()
     list_fields = [ 'shortname', 'organisation', 'registered', 'registeredSince', 'validUntil', 'baseCountry' ]
@@ -27,6 +43,7 @@ class ApplicationViewSet(UniModelViewSet):
         'applicationclarification_set',
         'applicationinterest_set',
         'applicationrole_set',
+        'applicationstandard_set',
     )
     limit_choices_to = {
         'rapporteur1':  Q(organisation=48, contactorganisation__function__startswith='RC'),
@@ -56,6 +73,12 @@ class ApplicationInterestViewSet(UniModelViewSet):
     queryset = ApplicationInterest.objects.all()
     list_fields = [ 'application', 'contact' ]
     filterset_fields = [ 'application', 'contact' ]
+
+class ApplicationStandardViewSet(UniModelViewSet):
+    queryset = ApplicationStandard.objects.all()
+    list_fields = [ 'application', 'standard', 'panel', 'rapporteurs', 'rc', 'keywords' ]
+    filterset_fields = [ 'application', 'standard', 'panel', 'rapporteurs', 'rc' ]
+    unidb_options = { 'delete': False, 'create': False }
 
 class ChangeReportViewSet(UniModelViewSet):
     queryset = ChangeReport.objects.all()

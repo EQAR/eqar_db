@@ -34,6 +34,7 @@ class UniDB:
         ApplicationRoleViewSet,
         ApplicationInterestViewSet,
         ApplicationClarificationViewSet,
+        ApplicationStandardViewSet,
         ChangeReportViewSet,
         ComplaintViewSet,
         AgencyUpdateViewSet,
@@ -41,6 +42,7 @@ class UniDB:
         InvoiceViewSet,
         CountryViewSet,
         RoleViewSet,
+        EsgStandardViewSet,
     ]
 
     @classmethod
