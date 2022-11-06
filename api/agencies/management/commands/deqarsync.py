@@ -61,7 +61,7 @@ class RemoteAgency(deqarclient.agency.Agency):
 
     def update_contact_names(self, local):
         # contact person name(s)
-        contact_person = ', '.join({ i['contact__person'] for i in local.instance.organisation.contactorganisation_set.filter(nameOnRegister=True).values('contact__person') }) or 'not applicable'
+        contact_person = ', '.join([ i['contact__person'] for i in local.instance.organisation.contactorganisation_set.filter(nameOnRegister=True).order_by('contact__person').values('contact__person') ]) or 'not applicable'
         if self.data['contact_person'] != contact_person:
             self.command.stdout.write(self.command.style.SUCCESS(f"  > contact: {self.data['contact_person']} -> {contact_person}"))
             self.data['contact_person'] = contact_person
@@ -201,7 +201,7 @@ class Command(BaseCommand):
 
         agencies = RegisteredAgency.objects.exclude(deqarId__isnull=True)
         if options['agency_id']:
-            agencies = agencies.filter(id=options['agency_id'])
+            agencies = agencies.filter(id__in=options['agency_id'])
 
         for agency in agencies:
             try:
