@@ -1,5 +1,5 @@
 from contacts.models import Contact, Organisation, Country
-from agencies.models import Applications, RegisteredAgency
+from agencies.models import Applications, RegisteredAgency, ApplicationStandard
 from uni_db.serializers import ListSerializer
 
 class _OrganisationSerializer(ListSerializer):
@@ -44,6 +44,7 @@ class ApplicationsListSerializer(ListSerializer):
             "agency",
             "submitDate",
             "type",
+            "review",
             "stage",
             "coordinator",
             "secretary",
@@ -54,5 +55,41 @@ class ApplicationsListSerializer(ListSerializer):
             "result",
             "decisionDate",
             "mtime",
+        ]
+
+class _ApplicationsSerializer(ListSerializer):
+    agency = _AgencySerializer()
+    coordinator = _OrganisationSerializer()
+
+    class Meta:
+        model = Applications
+        fields = [
+            "id",
+            "_label",
+            "agency",
+            "submitDate",
+            "type",
+            "review",
+            "coordinator",
+            "reportDate",
+            "result",
+            "decisionDate",
+            "mtime",
+        ]
+
+class ApplicationStandardListSerializer(ListSerializer):
+    application = _ApplicationsSerializer()
+
+    class Meta:
+        model = ApplicationStandard
+        fields = [
+            "id",
+            "application",
+            "standard",
+            "panel",
+            "rc",
+            "keywords",
+            "decision",
+            "mtime"
         ]
 

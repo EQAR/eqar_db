@@ -12,11 +12,12 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 
 from uni_db.filters import FilterBackend
 
-from agencies.models import Applications, RegisteredAgency
+from agencies.models import Applications, RegisteredAgency, ApplicationStandard
 
 from stats.helpers import Esg, EsgList
-from stats.serializers import ApplicationsListSerializer
+from stats.serializers import ApplicationsListSerializer, ApplicationStandardListSerializer
 
+from rest_framework import pagination
 # these views are primarily for the EQAR website
 
 class OpenApplications(generics.ListAPIView):
@@ -38,6 +39,28 @@ class WithdrawnApplications(generics.ListAPIView):
     queryset = Applications.objects.filter(stage='-- Withdrawn').order_by('-submitDate')
     serializer_class = ApplicationsListSerializer
     pagination_class = None
+
+# precedent list
+
+class ApplicationPrecedentList(generics.ListAPIView):
+    """
+    list of precedents
+    """
+    permission_classes = [ permissions.IsAuthenticated ]
+    queryset = ApplicationStandard.objects.exclude(keywords__isnull=True, decision__isnull=True)
+    serializer_class = ApplicationStandardListSerializer
+    filter_backends = [FilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = {
+        'application__agency': [ 'exact' ],
+        'application__agency__baseCountry': [ 'exact' ],
+        'application__type': [ 'exact' ],
+        'application__review': [ 'exact' ],
+        'application__decisionDate': [ 'gt', 'lt', 'year' ],
+        'standard': [ 'exact' ],
+        'rc': [ 'exact' ],
+        'panel': [ 'exact' ],
+    }
+    search_fields = [ 'standard__title', 'application__agency__shortname', 'keywords', 'decision' ]
 
 # following views are primarily for datawrapper.io charts
 
