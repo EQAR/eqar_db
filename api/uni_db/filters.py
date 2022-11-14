@@ -5,6 +5,7 @@ from rest_framework import pagination
 
 from django_filters import ChoiceFilter, NumberFilter
 from django_filters.rest_framework import DjangoFilterBackend, FilterSet
+from django_filters.rest_framework.filters import BooleanFilter
 
 from uni_db.fields import EnumField
 
@@ -74,6 +75,11 @@ class SearchFacetPagination(pagination.LimitOffsetPagination):
                             else:
                                 facet.append((choice[field], choice['_count']))
                     facets[field] = facet
+                elif isinstance(filter, BooleanFilter):
+                    facets[field] = [
+                        ( True, filter.filter(self.qs, True).count() ),
+                        ( False, filter.filter(self.qs, False).count() ),
+                    ]
         r.data['facets'] = facets   # augment by search facets
         return(r)
 
