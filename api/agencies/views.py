@@ -77,7 +77,15 @@ class ApplicationInterestViewSet(UniModelViewSet):
 class ApplicationStandardViewSet(UniModelViewSet):
     queryset = ApplicationStandard.objects.all()
     list_fields = [ 'application', 'standard', 'panel', 'rapporteurs', 'rc', 'keywords' ]
-    filterset_fields = [ 'application', 'standard', 'panel', 'rapporteurs', 'rc' ]
+    search_fields = [ 'standard__title', 'application__agency__shortname', 'keywords', 'decision' ]
+    filterset_fields = {
+        'application': [ 'exact' ],
+        'standard': [ 'exact' ],
+        'panel': [ 'exact' ],
+        'rapporteurs': [ 'exact' ],
+        'rc': [ 'exact' ],
+        'keywords': [ 'isnull' ],
+    }
     unidb_options = { 'delete': False, 'create': False }
 
 class ChangeReportViewSet(UniModelViewSet):
