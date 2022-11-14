@@ -60,20 +60,20 @@ class SearchFacetPagination(pagination.LimitOffsetPagination):
 
     def get_paginated_response(self, data):
         r = super().get_paginated_response(data) # data as original class returns it
-        filterset_fields = getattr(self.view, 'filterset_fields', None)
         facets = { }
-        for field, filter in self.request.filterset.get_filters().items():
-            if isinstance(filter, (ChoiceFilter, NumberFilter)):
-                facet = [ ]
-                if isinstance(filter, ChoiceFilter):
-                    labels = { ( value.value if isinstance(value, ModelChoiceIteratorValue) else value ): label for value, label in filter.field.choices }
-                for choice in self.qs.values(field).annotate(_count=Count(field)).order_by(field):
-                    if choice['_count'] > 0:
-                        if isinstance(filter, ChoiceFilter) and choice[field] in labels:
-                            facet.append((choice[field], choice['_count'], labels[choice[field]]))
-                        else:
-                            facet.append((choice[field], choice['_count']))
-                facets[field] = facet
+        if hasattr(self.request, 'filterset') and hasattr(self.request.filterset, 'get_filters'):
+            for field, filter in self.request.filterset.get_filters().items():
+                if isinstance(filter, (ChoiceFilter, NumberFilter)):
+                    facet = [ ]
+                    if isinstance(filter, ChoiceFilter):
+                        labels = { ( value.value if isinstance(value, ModelChoiceIteratorValue) else value ): label for value, label in filter.field.choices }
+                    for choice in self.qs.values(field).annotate(_count=Count(field)).order_by(field):
+                        if choice['_count'] > 0:
+                            if isinstance(filter, ChoiceFilter) and choice[field] in labels:
+                                facet.append((choice[field], choice['_count'], labels[choice[field]]))
+                            else:
+                                facet.append((choice[field], choice['_count']))
+                    facets[field] = facet
         r.data['facets'] = facets   # augment by search facets
         return(r)
 
