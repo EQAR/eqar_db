@@ -55,6 +55,46 @@ class RegisteredAgency(models.Model):
         ordering = [ 'shortname' ]
 
 
+class EsgVersion(models.Model):
+    id = models.AutoField('ID', primary_key=True)
+    name = models.CharField(max_length=255, unique=True)
+    active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return(self.name)
+
+    class Meta:
+        verbose_name = 'ESG version'
+        ordering = [ 'name' ]
+
+
+class EsgStandard(models.Model):
+    id = models.AutoField('ID', primary_key=True)
+    version = models.ForeignKey(EsgVersion, on_delete=models.RESTRICT)
+    part = models.CharField(max_length=3)
+    number = models.CharField(max_length=3)
+    title = models.CharField(max_length=255)
+
+    def __str__(self):
+        label = f'{self.part}.{self.number} {self.title}'
+        if not self.version.active:
+            label = label + f' ({self.version})'
+        return(label)
+
+    @property
+    def attribute_name(self):
+        return f'{self.part}_{self.number}'
+
+    @property
+    def short_name(self):
+        return f'ESG {self.part}.{self.number}'
+
+    class Meta:
+        verbose_name = 'ESG standard'
+        ordering = [ '-version__active', 'version__name', 'part', 'number' ]
+        unique_together = ( ('version', 'part', 'number'), )
+
+
 class AgencyUpdate(models.Model):
     TYPE_CHOICES = [
         ('institutional',   'Instituional reviews'),
@@ -213,35 +253,62 @@ class Applications(models.Model):
             self.previous = self.agency.applications_set.filter(id__lt=self.id).order_by('id').last()
         else:
             self.previous = None
-        for esg in [ '2_1', '2_2', '2_3', '2_4', '2_5', '2_6', '2_7', '3_1', '3_2', '3_3', '3_4', '3_5', '3_6' ]:
-            if self.previous and self.review in [ 'Focused', 'Targeted' ] and getattr(self, f'inherit_{esg}'):
-                setattr(self, f'panel_{esg}', getattr(self.previous, f'panel_{esg}'))
-                setattr(self, f'rapp_{esg}', getattr(self.previous, f'rapp_{esg}'))
-                setattr(self, f'rc_{esg}', getattr(self.previous, f'rc_{esg}'))
+        for esg in EsgVersion.objects.get(active=True).esgstandard_set.all():
+            if self.previous and self.review in [ 'Focused', 'Targeted' ] and getattr(self, f'inherit_{esg.attribute_name}'):
+                setattr(self, f'panel_{esg.attribute_name}', getattr(self.previous, f'panel_{esg.attribute_name}'))
+                setattr(self, f'rapp_{esg.attribute_name}', getattr(self.previous, f'rapp_{esg.attribute_name}'))
+                setattr(self, f'rc_{esg.attribute_name}', getattr(self.previous, f'rc_{esg.attribute_name}'))
+            if getattr(self, f'panel_{esg.attribute_name}') or getattr(self, f'rapp_{esg.attribute_name}') or getattr(self, f'rc_{esg.attribute_name}'):
+                ApplicationStandard.objects.update_or_create(
+                    application=self,
+                    standard=esg,
+                    defaults=dict(
+                        panel=getattr(self, f'panel_{esg.attribute_name}'),
+                        rapporteurs=getattr(self, f'rapp_{esg.attribute_name}'),
+                        rc=getattr(self, f'rc_{esg.attribute_name}')
+                    )
+                )
         super().save(*args, **kwargs)
 
     def get_readonly_fields(self):
         readonly_fields = [ 'previous' ]
-        for esg in [ '2_1', '2_2', '2_3', '2_4', '2_5', '2_6', '2_7', '3_1', '3_2', '3_3', '3_4', '3_5', '3_6' ]:
-            if getattr(self, f'inherit_{esg}'):
-                readonly_fields.append(f'panel_{esg}')
-                readonly_fields.append(f'rapp_{esg}')
-                readonly_fields.append(f'rc_{esg}')
+        for esg in EsgVersion.objects.get(active=True).esgstandard_set.all():
+            if getattr(self, f'inherit_{esg.attribute_name}'):
+                readonly_fields.append(f'panel_{esg.attribute_name}')
+                readonly_fields.append(f'rapp_{esg.attribute_name}')
+                readonly_fields.append(f'rc_{esg.attribute_name}')
         return readonly_fields
 
     def clean(self, *args, **kwargs):
+        def require(field, msg):
+            if getattr(self, field) is None or getattr(self, field) == '':
+                errors[field] = msg
+
         super().clean(*args, **kwargs)
         errors = {}
         if self.type == 'Initial' and self.review == 'Targeted':
             errors["review"] = "Targeted reviews allowed only for Renewal."
-        if self.stage == '8. Completed' and self.result is None:
-            errors["stage"] = "Decision needs to be specified for completed decisions."
+        if self.stage >= '2': # waiting report
+            require("eligibilityDate", "Date must be specified after eligibility stage.")
+            require("reportExpected", "Date must be specified after eligibility stage.")
+            require("coordinator", "Coordinator must be specified.")
+        if self.stage >= '3': # first consideration
+            require("reportDate", "Date must be specified.")
+            require("reportSubmitted", "Date must be specified.")
+        if self.stage >= '4': # waiting representation
+            for esg in EsgVersion.objects.get(active=True).esgstandard_set.all():
+                if not getattr(self, f'inherit_{esg.attribute_name}'):
+                    require(f'panel_{esg.attribute_name}', "Must be specified.")
+                    require(f'rapp_{esg.attribute_name}', "Must be specified.")
+                    require(f'rc_{esg.attribute_name}', "Must be specified.")
+        if self.stage >= '8': # completed
+            require("result", "Decision needs to be specified for completed decisions.")
+        if self.result:
+            require("decisionDate", "Date must be specified.")
         if self.eligibilityDate and self.eligibilityDate < self.submitDate:
             errors["eligibilityDate"] = "Cannot be before submission date."
-        if self.result and self.decisionDate is None:
-            errors["decisionDate"] = "Date must be specified."
-        for esg in [ '2_1', '2_2', '2_3', '2_4', '2_5', '2_6', '2_7', '3_1', '3_2', '3_3', '3_4', '3_5', '3_6' ]:
-            if getattr(self, f'inherit_{esg}') and self.review not in [ 'Focused', 'Targeted' ]:
+        for esg in EsgVersion.objects.get(active=True).esgstandard_set.all():
+            if getattr(self, f'inherit_{esg.attribute_name}') and self.review not in [ 'Focused', 'Targeted' ]:
                 errors[NON_FIELD_ERRORS] = "Inheriting compliance is only possible for focused or targeted reviews."
         if errors:
             raise ValidationError(errors)
@@ -253,6 +320,31 @@ class Applications(models.Model):
 
     def __str__(self):
         return(f'A{self.id} {self.agency} ({self.submitDate.year} {self.type})')
+
+
+class ApplicationStandard(models.Model):
+    id = models.AutoField('ID', primary_key=True)
+    application = models.ForeignKey(Applications, on_delete=models.RESTRICT, editable=False)
+    standard = models.ForeignKey(EsgStandard, on_delete=models.RESTRICT, editable=False)
+    panel = EnumField(choices=Applications.PANEL_CHOICES, editable=False, blank=True, null=True)
+    rapporteurs = EnumField(choices=Applications.EQAR_CHOICES, editable=False, blank=True, null=True)
+    rc = EnumField(choices=Applications.EQAR_CHOICES, editable=False, blank=True, null=True)
+    keywords = models.CharField(max_length=255, blank=True, null=True)
+    decision = models.TextField(blank=True, null=True)
+    internal_notes = models.TextField(blank=True, null=True)
+    mtime = models.DateTimeField("last modified", auto_now=True)
+
+    def clean(self, *args, **kwargs):
+        super().clean(*args, **kwargs)
+        if (self.keywords is None or self.keywords == '') and self.decision is not None:
+            raise ValidationError({ "keywords": "Keywords must be filled if decision text is filled." })
+
+    class Meta:
+        unique_together = ( ('application', 'standard'), )
+        ordering = [ 'application', 'standard' ]
+
+    def __str__(self):
+        return(f'{self.standard.short_name} @ {self.application}')
 
 
 class ApplicationClarification(models.Model):

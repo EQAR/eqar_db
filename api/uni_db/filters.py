@@ -1,9 +1,11 @@
 from django.db.models import Count
+from django.forms.models import ModelChoiceIteratorValue
 
 from rest_framework import pagination
 
-from django_filters import ChoiceFilter
+from django_filters import ChoiceFilter, NumberFilter
 from django_filters.rest_framework import DjangoFilterBackend, FilterSet
+from django_filters.rest_framework.filters import BooleanFilter
 
 from uni_db.fields import EnumField
 
@@ -32,6 +34,16 @@ class FilterBackend(DjangoFilterBackend):
 
         return None
 
+    def get_filterset(self, request, queryset, view):
+        """
+        no custom behaviour, but the method saves the generated filterset in the
+        current request instance, so it can later on be used for generating facets
+        """
+        filterset = super().get_filterset(request, queryset, view)
+        request.filterset = filterset
+        return(filterset)
+
+
 class SearchFacetPagination(pagination.LimitOffsetPagination):
     """
     custom pagination class that adds options and record counts for searchable fields
@@ -44,24 +56,30 @@ class SearchFacetPagination(pagination.LimitOffsetPagination):
         """
         self.qs = queryset
         self.view = view
+        self.request = request
         return(super().paginate_queryset(queryset, request, view))
 
     def get_paginated_response(self, data):
         r = super().get_paginated_response(data) # data as original class returns it
-        filterset_fields = getattr(self.view, 'filterset_fields', None)
-        if filterset_fields is not None:
-            facets = { }
-            for field in filterset_fields:
-                model_field = self.qs.model._meta.get_field(field)
-                facet = [ ]
-                for choice in self.qs.values(field).annotate(_count=Count(field)).order_by(field):
-                    if model_field.is_relation and choice[field]:
-                        kwargs = {}
-                        kwargs[model_field.target_field.name] = choice[field]
-                        facet.append((choice[field], choice['_count'], model_field.related_model.objects.get(**kwargs).__str__()))
-                    else:
-                        facet.append((choice[field], choice['_count']))
-                facets[field] = facet
-            r.data['facets'] = facets   # augment by search facets
+        facets = { }
+        if hasattr(self.request, 'filterset') and hasattr(self.request.filterset, 'get_filters'):
+            for field, filter in self.request.filterset.get_filters().items():
+                if isinstance(filter, (ChoiceFilter, NumberFilter)):
+                    facet = [ ]
+                    if isinstance(filter, ChoiceFilter):
+                        labels = { ( value.value if isinstance(value, ModelChoiceIteratorValue) else value ): label for value, label in filter.field.choices }
+                    for choice in self.qs.values(field).annotate(_count=Count(field)).order_by(field):
+                        if choice['_count'] > 0:
+                            if isinstance(filter, ChoiceFilter) and choice[field] in labels:
+                                facet.append((choice[field], choice['_count'], labels[choice[field]]))
+                            else:
+                                facet.append((choice[field], choice['_count']))
+                    facets[field] = facet
+                elif isinstance(filter, BooleanFilter):
+                    facets[field] = [
+                        ( True, filter.filter(self.qs, True).count() ),
+                        ( False, filter.filter(self.qs, False).count() ),
+                    ]
+        r.data['facets'] = facets   # augment by search facets
         return(r)
 

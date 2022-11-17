@@ -154,7 +154,7 @@ class InfogramJSONRenderer(JSONRenderer):
     def flatten_list(self, l):
         flat_list = {}
         for index, item in enumerate(l):
-            index = text_type(index)
+            index = str(index)
             flat_item = self.flatten_item(item)
             nested_item = self.nest_flat_item(flat_item, index)
             flat_list.update(nested_item)
