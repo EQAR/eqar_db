@@ -280,16 +280,33 @@ class Applications(models.Model):
         return readonly_fields
 
     def clean(self, *args, **kwargs):
+        def require(field, msg):
+            if getattr(self, field) is None or getattr(self, field) == '':
+                errors[field] = msg
+
         super().clean(*args, **kwargs)
         errors = {}
         if self.type == 'Initial' and self.review == 'Targeted':
             errors["review"] = "Targeted reviews allowed only for Renewal."
-        if self.stage == '8. Completed' and self.result is None:
-            errors["stage"] = "Decision needs to be specified for completed decisions."
+        if self.stage >= '2': # waiting report
+            require("eligibilityDate", "Date must be specified after eligibility stage.")
+            require("reportExpected", "Date must be specified after eligibility stage.")
+            require("coordinator", "Coordinator must be specified.")
+        if self.stage >= '3': # first consideration
+            require("reportDate", "Date must be specified.")
+            require("reportSubmitted", "Date must be specified.")
+        if self.stage >= '4': # waiting representation
+            for esg in EsgVersion.objects.get(active=True).esgstandard_set.all():
+                if not getattr(self, f'inherit_{esg.attribute_name}'):
+                    require(f'panel_{esg.attribute_name}', "Must be specified.")
+                    require(f'rapp_{esg.attribute_name}', "Must be specified.")
+                    require(f'rc_{esg.attribute_name}', "Must be specified.")
+        if self.stage >= '8': # completed
+            require("result", "Decision needs to be specified for completed decisions.")
+        if self.result:
+            require("decisionDate", "Date must be specified.")
         if self.eligibilityDate and self.eligibilityDate < self.submitDate:
             errors["eligibilityDate"] = "Cannot be before submission date."
-        if self.result and self.decisionDate is None:
-            errors["decisionDate"] = "Date must be specified."
         for esg in EsgVersion.objects.get(active=True).esgstandard_set.all():
             if getattr(self, f'inherit_{esg.attribute_name}') and self.review not in [ 'Focused', 'Targeted' ]:
                 errors[NON_FIELD_ERRORS] = "Inheriting compliance is only possible for focused or targeted reviews."
