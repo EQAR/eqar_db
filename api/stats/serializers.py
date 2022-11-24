@@ -1,5 +1,7 @@
+from rest_framework import serializers
+
 from contacts.models import Contact, Organisation, Country
-from agencies.models import Applications, RegisteredAgency, ApplicationStandard
+from agencies.models import Applications, RegisteredAgency, ApplicationStandard, ApplicationClarification
 from uni_db.serializers import ListSerializer
 
 class _OrganisationSerializer(ListSerializer):
@@ -77,8 +79,19 @@ class _ApplicationsSerializer(ListSerializer):
             "mtime",
         ]
 
+class _ApplicationClarificationSerializer(ListSerializer):
+    class Meta:
+        model = ApplicationClarification
+        fields = [ "id", "type", "sentOn", "replyOn" ]
+
 class ApplicationStandardListSerializer(ListSerializer):
     application = _ApplicationsSerializer()
+    clarification = serializers.SerializerMethodField()
+
+    def get_clarification(self, obj):
+        kwargs = { 'application': obj.application }
+        kwargs[f'esg_{obj.standard.attribute_name}'] = True
+        return _ApplicationClarificationSerializer(ApplicationClarification.objects.filter(**kwargs), many=True).data
 
     class Meta:
         model = ApplicationStandard
@@ -86,6 +99,7 @@ class ApplicationStandardListSerializer(ListSerializer):
             "id",
             "application",
             "standard",
+            "clarification",
             "panel",
             "rc",
             "keywords",
