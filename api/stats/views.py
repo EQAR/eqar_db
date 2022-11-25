@@ -55,6 +55,7 @@ class ApplicationPrecedentList(generics.ListAPIView):
         'application__agency__baseCountry': [ 'exact' ],
         'application__type': [ 'exact' ],
         'application__review': [ 'exact' ],
+        'application__coordinator': [ 'exact' ],
         'application__decisionDate': [ 'gt', 'lt', 'year' ],
         'standard': [ 'exact' ],
         'rc': [ 'exact' ],

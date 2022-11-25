@@ -63,6 +63,9 @@ class ApplicationRoleViewSet(UniModelViewSet):
     list_fields = [ 'application', 'contact', 'role', 'notes' ]
     filterset_fields = [ 'application', 'contact', 'role' ]
     search_fields = [ 'application__agency__shortname', 'application__agency__organisation__longname', 'contact__firstName', 'contact__lastName' ]
+    unidb_options = {
+        'includeGlobalSearch': False,
+    }
 
 class ApplicationClarificationViewSet(UniModelViewSet):
     queryset = ApplicationClarification.objects.all()
@@ -86,7 +89,11 @@ class ApplicationStandardViewSet(UniModelViewSet):
         'rc': [ 'exact' ],
         'keywords': [ 'isnull' ],
     }
-    unidb_options = { 'delete': False, 'create': False }
+    unidb_options = {
+        'delete': False,
+        'create': False,
+        'includeGlobalSearch': False,
+    }
 
 class ChangeReportViewSet(UniModelViewSet):
     queryset = ChangeReport.objects.all()
