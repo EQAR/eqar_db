@@ -18,6 +18,60 @@ from stats.helpers import Esg, EsgList
 from stats.serializers import ApplicationsListSerializer, ApplicationStandardListSerializer
 
 from rest_framework import pagination
+
+# toolbox
+
+class PerYearStatsView(views.APIView):
+    """
+    generic view for by-year stats
+    """
+
+    queryset = None # overwrite in subclass
+
+    def __init__(self):
+        if not hasattr(self, 'queryset'):
+            self.queryset = self.get_queryset()
+        if not hasattr(self, 'year_start'):
+            self.year_start = self.get_year_start()
+        if not hasattr(self, 'year_last'):
+            self.year_last = self.get_year_last()
+        self.year_range = range(self.year_start, self.year_last + 1)
+
+    def get_queryset(self):
+        raise NotImplementedError('you must either set the queryset attribute or implement get_queryset()')
+
+    def get_year_start(self):
+        return 2008
+
+    def get_year_last(self):
+        return datetime.date.today().year
+
+    def filter_queryset_by_year(self, year, **kwargs):
+        """
+        filter the queryset for a given year
+        """
+        raise NotImplementedError('function filter_queryset_by_year() must be implemented')
+
+    def stats(self, filtered_qs, year, **kwargs):
+        """
+        return stats using a filtered queryset - should return a dict
+        """
+        raise NotImplementedError('function stats() must be implemented')
+
+    def iterate_over_years(self, **kwargs):
+        stats = [ ]
+        for year in self.year_range:
+            this = self.stats(self.filter_queryset_by_year(year, **kwargs), year, **kwargs)
+            this['year'] = year
+            stats.append(this)
+        return stats
+
+    def get_stats(self, **kwargs):
+        return self.iterate_over_years(**kwargs)
+
+    def get(self, request, format=None):
+        return Response(self.get_stats(request=request, format=format), status=status.HTTP_200_OK)
+
 # these views are primarily for the EQAR website
 
 class OpenApplications(generics.ListAPIView):
@@ -66,40 +120,36 @@ class ApplicationPrecedentList(generics.ListAPIView):
 # following views are primarily for datawrapper.io charts
 
 @method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
-class ApplicationsTimeline(views.APIView):
+class ApplicationsTimeline(PerYearStatsView):
     """
     return number of applications and registered agencies by year
     """
     permission_classes = [ ]
-    START = 2008
+    queryset = Applications.objects.all()
+    year_start = 2008
 
     def get_renderer_context(self):
         context = super().get_renderer_context()
-        context['header'] = (
-            'year',
-            'applications',
-            'agencies',
-        )
         context['labels'] = {
             'year': 'Year',
             'applications': 'Decisions on applications',
             'agencies': 'Registered agencies',
         }
+        context['header'] = tuple(context['labels'].keys())
         return context
 
-    def get(self, request, format=None):
-        stats = []
-        current_year = datetime.date.today().year
-        for year in range(self.START, current_year + 1):
-            first = datetime.date(year, 1, 1)
-            last = datetime.date(year, 12, 31)
-            stats.append({
-                'year': year,
-                'applications': Applications.objects.filter(decisionDate__year=year).count(),
-                'agencies': RegisteredAgency.objects.filter(registeredSince__lte=last, validUntil__gte=first).count() if year != current_year
+    def filter_queryset_by_year(self, year, **kwargs):
+        return self.queryset.filter(decisionDate__year=year)
+
+    def stats(self, filtered_qs, year, **kwargs):
+        first = datetime.date(year, 1, 1)
+        last = datetime.date(year, 12, 31)
+        return({
+            'applications': filtered_qs.count(),
+            'agencies': RegisteredAgency.objects.filter(registeredSince__lte=last, validUntil__gte=first).count() if year != self.year_last
                         else RegisteredAgency.objects.filter(registered=True).count(),
-            })
-        return Response(stats, status=status.HTTP_200_OK)
+        })
+
 
 @method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
 class ApplicationsTotals(views.APIView):
@@ -110,16 +160,12 @@ class ApplicationsTotals(views.APIView):
 
     def get_renderer_context(self):
         context = super().get_renderer_context()
-        context['header'] = (
-            'result',
-            'initial',
-            'renewal',
-        )
         context['labels'] = {
             'result': 'Result',
             'initial': 'Initial applications',
             'renewal': 'Renewal applications',
         }
+        context['header'] = tuple(context['labels'].keys())
         return context
 
     def get(self, request, format=None):
