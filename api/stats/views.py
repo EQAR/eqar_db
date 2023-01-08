@@ -216,6 +216,52 @@ class ComplianceStats(views.APIView):
     def get(self, request, format=None):
         return Response(self.filtered_stats(), status=status.HTTP_200_OK)
 
+
+@method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
+class ClarificationRequestStats(PerYearStatsView):
+    """
+    statistics on number of clarificaiton requests
+    """
+    permission_classes = [ ]
+
+    queryset = Applications.objects.filter(stage='8. Completed')
+    year_start = 2016
+
+    def get_year_last(self):
+        return self.queryset.aggregate(last=Max('decisionDate'))['last'].year
+
+    def get_renderer_context(self):
+        context = super().get_renderer_context()
+        context['labels'] = {
+            'year': 'Year',
+            'total': 'Applications total',
+            'request_panel': 'Requests to panel',
+            'request_panel_share': 'Requests to panel (percentage)',
+            'request_coordinator': 'Requests to coordinator',
+            'request_coordinator_share': 'Requests to coordinator (percentage)',
+            'request_agency': 'Requests to agency',
+            'request_agency_share': 'Requests to agency (percentage)',
+            'request_other': 'Requests to others',
+            'request_other_share': 'Requests to others (percentage)',
+        }
+        context['header'] = tuple(context['labels'].keys())
+        return context
+
+    def filter_queryset_by_year(self, year, **kwargs):
+        return self.queryset.filter(decisionDate__year=year)
+
+    def stats(self, qs_year, year, **kwargs):
+        this = {
+            'total':                qs_year.count(),
+            'request_panel':        qs_year.filter(applicationclarification__type='Panel').distinct().count(),
+            'request_coordinator':  qs_year.filter(applicationclarification__type='Coordinator').distinct().count(),
+            'request_agency':       qs_year.filter(applicationclarification__type='Agency').distinct().count(),
+            'request_other':        qs_year.filter(applicationclarification__type='Other').distinct().count(),
+        }
+        for t in ('panel','coordinator','agency','other'):
+            this[f'request_{t}_share'] = this[f'request_{t}'] / this['total']
+        return this
+
 # following views are designed for Infogram/Prezi
 
 class ComplianceExtendedStats(ComplianceStats):

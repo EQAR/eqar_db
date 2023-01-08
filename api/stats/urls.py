@@ -18,4 +18,5 @@ urlpatterns.add_url(r'applications/withdrawn', WithdrawnApplications)
 urlpatterns.add_url(r'applications/by-year', ApplicationsTimeline)
 urlpatterns.add_url(r'applications/totals', ApplicationsTotals)
 urlpatterns.add_url(r'applications/precedents', ApplicationPrecedentList)
+urlpatterns.add_url(r'applications/clarification-requests', ClarificationRequestStats)
 
