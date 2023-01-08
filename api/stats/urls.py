@@ -12,6 +12,7 @@ urlpatterns = UrlList()
 urlpatterns.add_url(r'esg/simple', ComplianceStats)
 urlpatterns.add_url(r'esg/extended', ComplianceExtendedStats)
 urlpatterns.add_url(r'esg/timeline-by-standard', ComplianceTimelineByStandard)
+urlpatterns.add_url(r'esg/compliance-changed', ComplianceChangeStats)
 
 urlpatterns.add_url(r'applications/open', OpenApplications)
 urlpatterns.add_url(r'applications/withdrawn', WithdrawnApplications)

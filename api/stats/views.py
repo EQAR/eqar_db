@@ -218,6 +218,54 @@ class ComplianceStats(views.APIView):
 
 
 @method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
+class ComplianceChangeStats(PerYearStatsView):
+    """
+    statistics on change to panel's conclusion per standard
+    """
+    permission_classes = [ ]
+
+    queryset = ApplicationStandard.objects.filter(application__stage='8. Completed')
+    year_start = 2016
+
+    Q_identical = Q(rc=F('panel')) | Q(panel='Full compliance', rc='Compliance') | Q(panel='Substantial compliance', rc='Compliance')
+    Q_downgrade =   ( ( Q(panel='Compliance') | Q(panel='Full compliance') | Q(panel='Substantial compliance') ) & ~Q(rc='Compliance') ) | \
+                    Q(panel='Partial compliance', rc='Non-compliance')
+    Q_upgrade = ( Q(panel='Non-compliance') & ~Q(rc='Non-compliance') ) | Q(panel='Partial compliance', rc='Compliance')
+
+    def get_year_last(self):
+        return self.queryset.aggregate(last=Max('application__decisionDate'))['last'].year
+
+    def get_renderer_context(self):
+        context = super().get_renderer_context()
+        context['labels'] = {
+            'year': 'Year',
+            'total': 'Applications total',
+            'downgrade': 'Conclusion downgraded',
+            'downgrade_share': 'Conclusion downgraded (percentage)',
+            'identical': 'Conclusion identical',
+            'identical_share': 'Conclusion identical (percentage)',
+            'upgrade': 'Conclusion upgraded',
+            'upgrade_share': 'Conclusion upgraded (percentage)',
+        }
+        context['header'] = tuple(context['labels'].keys())
+        return context
+
+    def filter_queryset_by_year(self, year, **kwargs):
+        return self.queryset.filter(application__decisionDate__year=year)
+
+    def stats(self, qs_year, year, **kwargs):
+        this = {
+            'total':        qs_year.count(),
+            'identical':    qs_year.filter(self.Q_identical).count(),
+            'downgrade':    qs_year.filter(self.Q_downgrade).count(),
+            'upgrade':      qs_year.filter(self.Q_upgrade).count(),
+        }
+        for i in ('identical','downgrade','upgrade'):
+            this[f'{i}_share'] = this[i] / this['total']
+        return this
+
+
+@method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
 class ApplicationsDuration(views.APIView):
     """
     return times between application, eligibility confirmation, report and decision
