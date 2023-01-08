@@ -250,7 +250,10 @@ class Applications(models.Model):
     def save(self, *args, **kwargs):
         self.selectName = str(self)
         if self.type == 'Renewal' or self.review == 'Focused':
-            self.previous = self.agency.applications_set.filter(id__lt=self.id).order_by('id').last()
+            if self.id is None:
+                self.previous = self.agency.applications_set.order_by('id').last()
+            else:
+                self.previous = self.agency.applications_set.filter(id__lt=self.id).order_by('id').last()
         else:
             self.previous = None
         for esg in EsgVersion.objects.get(active=True).esgstandard_set.all():
