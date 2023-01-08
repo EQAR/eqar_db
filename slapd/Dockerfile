@@ -1,26 +1,24 @@
 FROM --platform=linux/amd64 ubuntu:latest
 # platform set b/c odbc-mariadb is not available for arm64
 
-# Install slapd
-RUN apt-get -y update
-RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -y slapd odbc-mariadb
+# Install slapd & netcat, empty the default configuration
+RUN apt-get -y update && \
+	echo "slapd slapd/no_configuration boolean true" | debconf-set-selections && \
+	apt-get install -y slapd odbc-mariadb netcat && \
+	apt-get clean && \
+	rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
+	rm -rf /etc/ldap/slapd.d /var/lib/ldap
 
-# netcat & wait-for-it
-RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -y netcat
+# add wait-for-it
 ADD https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh /wait-for-it.sh
 RUN chmod 0755 /wait-for-it.sh
-
-RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-# empty the default configuration
-RUN rm -rf /etc/ldap/slapd.d /var/lib/ldap
-RUN mkdir /etc/ldap/slapd.d /var/lib/ldap
 
 # add ODBC config file
 ADD odbc.ini /etc/
 
 # prepare new config
-RUN chown -R openldap.openldap /etc/ldap/slapd.d /var/lib/ldap
+RUN mkdir -p /etc/ldap/slapd.d /var/lib/ldap /var/run/slapd && \
+	chown -R openldap.openldap /etc/ldap/slapd.d /var/lib/ldap /var/run/slapd
 
 USER openldap:openldap
 
