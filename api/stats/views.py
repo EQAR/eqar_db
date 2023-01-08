@@ -242,3 +242,40 @@ class ComplianceExtendedStats(ComplianceStats):
 
         return Response(stats, status=status.HTTP_200_OK)
 
+
+class ComplianceTimelineByStandard(PerYearStatsView):
+    """
+    show compliance by year for each ESG standard
+    """
+    permission_classes = [ ]
+
+    queryset = Applications.objects.filter(stage='8. Completed')
+    year_start = 2016
+
+    def get_year_last(self):
+        return self.queryset.aggregate(last=Max('decisionDate'))['last'].year
+
+    def get_renderer_context(self):
+        context = super().get_renderer_context()
+        context['header'] = (
+            'year',
+            'Compliance',
+            'Partial compliance',
+            'Non-compliance',
+        )
+        return context
+
+    def filter_queryset_by_year(self, year, **kwargs):
+        return self.queryset.filter(decisionDate__year=year)
+
+    def stats(self, filtered_qs, year, esg, **kwargs):
+        this = { }
+        for count in filtered_qs.exclude(**{f'{esg.rc}__isnull': True}).values(esg.rc).annotate(n=Count('id')).order_by(esg.rc):
+            this[count[esg.rc]] = count['n']
+        return this
+
+    def get_stats(self, **kwargs):
+        stats = { }
+        for esg in EsgList():
+            stats[str(esg)] = self.iterate_over_years(esg=esg, **kwargs)
+        return stats
