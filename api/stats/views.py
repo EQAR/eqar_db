@@ -1,7 +1,7 @@
 import datetime
 
 from django.conf import settings
-from django.db.models import Count, Max, Q
+from django.db.models import Count, Max, Q, F, ExpressionWrapper, DurationField, Avg
 from django.shortcuts import render
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_control
@@ -215,6 +215,128 @@ class ComplianceStats(views.APIView):
 
     def get(self, request, format=None):
         return Response(self.filtered_stats(), status=status.HTTP_200_OK)
+
+
+@method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
+class ApplicationsDuration(views.APIView):
+    """
+    return times between application, eligibility confirmation, report and decision
+    """
+    permission_classes = [ ]
+
+    queryset = Applications.objects.filter(stage='8. Completed')
+
+    default_limit = 10
+    name_expression = 'selectName'
+    zero_date = 'reportDate'
+    include_dates = [
+        'submitDate',
+        'eligibilityDate',
+        'sitevisitDate',
+        'reportSubmitted',
+        'decisionDate',
+    ]
+
+    def get_renderer_context(self):
+        context = super().get_renderer_context()
+        context['labels'] = {
+            'label': 'Application',
+            'd_submitDate': 'Application submitted',
+            'd_eligibilityDate': 'Eligibility confirmed',
+            'd_sitevisitDate': 'Site-visit date',
+            'd_reportDate': 'Report date',
+            'd_reportSubmitted': 'Report submitted',
+            'd_decisionDate': 'RC decision',
+        }
+        context['header'] = tuple(context['labels'].keys())
+        return context
+
+    def _timedelta(self, a, b=None):
+        if b is None:
+            b = self.zero_date
+        return ExpressionWrapper(F(a)-F(b), output_field=DurationField())
+
+    def stats(self, request):
+        # limit to the X latest cases
+        limit = int(request.query_params.get('limit', self.default_limit))
+        qs = self.queryset[0:limit]
+        # generate annotation expressions for timedeltas
+        annotate_kwargs = { 'label': F(self.name_expression) }
+        for date in self.include_dates:
+            annotate_kwargs[f'd_{date}'] = self._timedelta(date)
+        # run query and transform values to ordinary list
+        values = list(qs.annotate(**annotate_kwargs).values(*(['label'] + [ f'd_{date}' for date in self.include_dates ])))
+        # convert timedeltas to days
+        for v in values:
+            for date in self.include_dates:
+                if v[f'd_{date}'] is not None:
+                    v[f'd_{date}'] = v[f'd_{date}'].days
+            v[f'd_{self.zero_date}'] = 0
+
+        return values
+
+    def get(self, request, format=None):
+        return Response(self.stats(request), status=status.HTTP_200_OK)
+
+
+@method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
+class ApplicationsDurationPerYear(PerYearStatsView):
+    """
+    return times between application, eligibility confirmation, report and decision
+    """
+    permission_classes = [ ]
+
+    queryset = Applications.objects.filter(stage='8. Completed')
+    year_start = 2016
+
+    zero_date = 'reportSubmitted'
+    include_dates = [
+        'submitDate',
+        'eligibilityDate',
+        'sitevisitDate',
+        'reportDate',
+        'decisionDate',
+    ]
+
+    def get_renderer_context(self):
+        context = super().get_renderer_context()
+        context['labels'] = {
+            'year': 'Year',
+            'd_submitDate': 'Application submitted',
+            'd_eligibilityDate': 'Eligibility confirmed',
+            'd_sitevisitDate': 'Site-visit date',
+            'd_reportDate': 'Report date',
+            'd_reportSubmitted': 'Report submitted',
+            'd_decisionDate': 'RC decision',
+        }
+        context['header'] = tuple(context['labels'].keys())
+        return context
+
+    def get_year_last(self):
+        return self.queryset.aggregate(last=Max('reportSubmitted'))['last'].year
+
+    def _timedelta(self, a, b=None):
+        if b is None:
+            b = self.zero_date
+        return ExpressionWrapper(F(a)-F(b), output_field=DurationField())
+
+    def filter_queryset_by_year(self, year, **kwargs):
+        return self.queryset.filter(reportSubmitted__year=year)
+
+    def stats(self, filtered_qs, year, **kwargs):
+        # generate annotation expressions for timedeltas
+        aggregate_kwargs = { }
+        for date in self.include_dates:
+            aggregate_kwargs[f'd_{date}'] = Avg(self._timedelta(date))
+        # run query and transform values to ordinary list
+        values = filtered_qs.aggregate(**aggregate_kwargs)
+        # convert timedeltas to days
+        for date in self.include_dates:
+            if values[f'd_{date}'] is not None:
+                values[f'd_{date}'] = values[f'd_{date}'].days
+            values[f'd_{self.zero_date}'] = 0
+
+        return values
 
 
 @method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
