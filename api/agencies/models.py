@@ -176,9 +176,9 @@ class Applications(models.Model):
     stage = EnumField(choices=STAGE_CHOICES, blank=False)
     eligibilityDate = models.DateField("eligibility confirmed on", db_column='eligibilityDate', blank=True, null=True)
     reportExpected = models.DateField("report expected by", db_column='reportExpected', blank=True, null=True)
+    sitevisitDate = models.DateField("site-visit date", db_column='sitevisitDate', blank=True, null=True)
     reportDate = models.DateField("report date", db_column='reportDate', blank=True, null=True)
     reportSubmitted = models.DateField("report submitted on", db_column='reportSubmitted', blank=True, null=True)
-    teleconfDate = models.DateField("teleconference on", db_column='teleconfDate', blank=True, null=True)
     rapporteur1 =   models.ForeignKey(Contact,      on_delete=models.SET_NULL, db_column='rapporteur1', blank=True, null=True,
                                                     related_name='application_rapporteur1', verbose_name='rapporteur')
     rapporteur2 =   models.ForeignKey(Contact,      on_delete=models.SET_NULL, db_column='rapporteur2', blank=True, null=True,
@@ -250,7 +250,10 @@ class Applications(models.Model):
     def save(self, *args, **kwargs):
         self.selectName = str(self)
         if self.type == 'Renewal' or self.review == 'Focused':
-            self.previous = self.agency.applications_set.filter(id__lt=self.id).order_by('id').last()
+            if self.id is None:
+                self.previous = self.agency.applications_set.order_by('id').last()
+            else:
+                self.previous = self.agency.applications_set.filter(id__lt=self.id).order_by('id').last()
         else:
             self.previous = None
         for esg in EsgVersion.objects.get(active=True).esgstandard_set.all():
@@ -292,7 +295,9 @@ class Applications(models.Model):
             require("eligibilityDate", "Date must be specified after eligibility stage.")
             require("reportExpected", "Date must be specified after eligibility stage.")
             require("coordinator", "Coordinator must be specified.")
+            require("secretary", "EQAR team member must be specified.")
         if self.stage >= '3': # first consideration
+            require("sitevisitDate", "Date must be specified.")
             require("reportDate", "Date must be specified.")
             require("reportSubmitted", "Date must be specified.")
         if self.stage >= '4': # waiting representation
