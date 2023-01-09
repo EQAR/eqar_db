@@ -12,7 +12,7 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 
 from uni_db.filters import FilterBackend
 
-from agencies.models import Applications, RegisteredAgency, ApplicationStandard
+from agencies.models import Applications, RegisteredAgency, ApplicationStandard, EsgStandard
 
 from stats.helpers import Esg, EsgList
 from stats.serializers import ApplicationsListSerializer, ApplicationStandardListSerializer
@@ -220,11 +220,11 @@ class ComplianceStats(views.APIView):
 @method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
 class ComplianceChangeStats(PerYearStatsView):
     """
-    statistics on change to panel's conclusion per standard
+    statistics on change to panel's conclusion per standard - by year
     """
     permission_classes = [ ]
 
-    queryset = ApplicationStandard.objects.filter(application__stage='8. Completed')
+    queryset = ApplicationStandard.objects.filter(application__stage='8. Completed', panel__isnull=False, rc__isnull=False)
     year_start = 2016
 
     Q_identical = Q(rc=F('panel')) | Q(panel='Full compliance', rc='Compliance') | Q(panel='Substantial compliance', rc='Compliance')
@@ -239,7 +239,7 @@ class ComplianceChangeStats(PerYearStatsView):
         context = super().get_renderer_context()
         context['labels'] = {
             'year': 'Year',
-            'total': 'Applications total',
+            'total': 'Conclusions total',
             'downgrade': 'Conclusion downgraded',
             'downgrade_share': 'Conclusion downgraded (percentage)',
             'identical': 'Conclusion identical',
@@ -263,6 +263,50 @@ class ComplianceChangeStats(PerYearStatsView):
         for i in ('identical','downgrade','upgrade'):
             this[f'{i}_share'] = this[i] / this['total']
         return this
+
+
+@method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
+class ComplianceChangePerStandardStats(views.APIView):
+    """
+    statistics on change to panel's conclusion per standard - by standard
+    """
+    permission_classes = [ ]
+
+    queryset = ApplicationStandard.objects.filter(application__stage='8. Completed', panel__isnull=False, rc__isnull=False)
+
+    def get_renderer_context(self):
+        context = super().get_renderer_context()
+        context['labels'] = {
+            'standard': 'Standard',
+            'total': 'Applications total',
+            'downgrade': 'Conclusion downgraded',
+            'downgrade_share': 'Conclusion downgraded (percentage)',
+            'identical': 'Conclusion identical',
+            'identical_share': 'Conclusion identical (percentage)',
+            'upgrade': 'Conclusion upgraded',
+            'upgrade_share': 'Conclusion upgraded (percentage)',
+        }
+        context['header'] = tuple(context['labels'].keys())
+        return context
+
+    def stats(self, filtered_qs, **kwargs):
+        this = {
+            'total':        filtered_qs.count(),
+            'identical':    filtered_qs.filter(ComplianceChangeStats.Q_identical).count(),
+            'downgrade':    filtered_qs.filter(ComplianceChangeStats.Q_downgrade).count(),
+            'upgrade':      filtered_qs.filter(ComplianceChangeStats.Q_upgrade).count(),
+        }
+        for i in ('identical','downgrade','upgrade'):
+            this[f'{i}_share'] = this[i] / this['total']
+        return this
+
+    def get(self, request, format=None):
+        stats = [ ]
+        for esg in EsgStandard.objects.filter(version__active=True):
+            this = self.stats(self.queryset.filter(standard=esg))
+            this['standard'] = str(esg)
+            stats.append(this)
+        return Response(stats, status=status.HTTP_200_OK)
 
 
 @method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
