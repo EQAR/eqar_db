@@ -220,11 +220,11 @@ class ComplianceStats(views.APIView):
 @method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
 class ComplianceChangeStats(PerYearStatsView):
     """
-    statistics on change to panel's conclusion per standard
+    statistics on change to panel's conclusion per standard - by year
     """
     permission_classes = [ ]
 
-    queryset = ApplicationStandard.objects.filter(application__stage='8. Completed')
+    queryset = ApplicationStandard.objects.filter(application__stage='8. Completed', panel__isnull=False, rc__isnull=False)
     year_start = 2016
 
     Q_identical = Q(rc=F('panel')) | Q(panel='Full compliance', rc='Compliance') | Q(panel='Substantial compliance', rc='Compliance')
@@ -239,7 +239,7 @@ class ComplianceChangeStats(PerYearStatsView):
         context = super().get_renderer_context()
         context['labels'] = {
             'year': 'Year',
-            'total': 'Applications total',
+            'total': 'Conclusions total',
             'downgrade': 'Conclusion downgraded',
             'downgrade_share': 'Conclusion downgraded (percentage)',
             'identical': 'Conclusion identical',
