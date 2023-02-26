@@ -326,6 +326,36 @@ class ComplianceChangePerStandardStats(ComplianceChangeMixin, StatsView):
         return self.get_queryset().filter(standard=esg)
 
 
+class ComplianceChangePerPanelStats(ComplianceChangeMixin, StatsView):
+    """
+    statistics on change to panel's conclusion - by panel members
+    """
+    field_labels = { 'person': 'Panel member', **ComplianceChangeMixin.field_labels }
+    x_range = Contact.objects.annotate(
+                    review_count=Count(
+                        'application_role',
+                        filter=Q(applicationrole__role__in=[
+                            'Panel member',
+                            'Panel chair',
+                            'Panel secretary',
+                        ])
+                    )
+                ).filter(review_count__gte=4)
+
+    def filter_queryset_by_x(self, contact, *args, **kwargs):
+        return self.get_queryset().filter(application__roles=contact)
+
+
+class ComplianceChangePerRapporteurStats(ComplianceChangeMixin, StatsView):
+    """
+    statistics on change to panel's conclusion - by RC rapporteurs
+    """
+    field_labels = { 'person': 'RC rapporteur', **ComplianceChangeMixin.field_labels }
+    x_range = Contact.objects.filter(organisation=48, contactorganisation__function__startswith='RC')
+
+    def filter_queryset_by_x(self, contact, *args, **kwargs):
+        return self.get_queryset().filter(Q(application__rapporteur1=contact) | Q(application__rapporteur2=contact))
+
 
 class ApplicationStatsMixin:
     """
