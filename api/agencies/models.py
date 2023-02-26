@@ -324,7 +324,7 @@ class Applications(models.Model):
         verbose_name = 'application'
 
     def __str__(self):
-        return(f'A{self.id} {self.agency} ({self.submitDate.year} {self.type})')
+        return(f'A{self.id} {self.agency} ({self.submitDate.year} {self.type}, {self.review})')
 
 
 class ApplicationStandard(models.Model):
