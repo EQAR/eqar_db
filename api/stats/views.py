@@ -12,7 +12,13 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 
 from uni_db.filters import FilterBackend
 
-from agencies.models import Applications, RegisteredAgency, ApplicationStandard, EsgStandard
+from contacts.models import Contact
+from agencies.models import \
+    Applications, \
+    RegisteredAgency, \
+    ApplicationStandard, \
+    EsgStandard, \
+    ApplicationRole
 
 from stats.helpers import Esg, EsgList
 from stats.serializers import ApplicationsListSerializer, ApplicationStandardListSerializer
@@ -21,56 +27,102 @@ from rest_framework import pagination
 
 # toolbox
 
-class PerYearStatsView(views.APIView):
+@method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
+class StatsView(views.APIView):
     """
-    generic view for by-year stats
+    Generic view for stats
+
+    These attributed should be defined in subclass, or the get_xyz() methods overwritten:
+
+    queryset     - Queryset from which stats are generated
+    x_range      - X axis range
+    field_labels - dict( [field name]: [column label], ... )
+
+    Optional field:
+    x_name       - field that takes X axis value (default: first field name)
     """
+    permission_classes = [ ] # default is public
 
-    queryset = None # overwrite in subclass
-
-    def __init__(self):
-        if not hasattr(self, 'queryset'):
-            self.queryset = self.get_queryset()
-        if not hasattr(self, 'year_start'):
-            self.year_start = self.get_year_start()
-        if not hasattr(self, 'year_last'):
-            self.year_last = self.get_year_last()
-        self.year_range = range(self.year_start, self.year_last + 1)
+    def _default_get(self, attribute, default=None):
+        if hasattr(self, attribute):
+            return getattr(self, attribute)
+        elif default:
+            return default
+        else:
+            raise NotImplementedError(f'you must either set the {attribute} attribute or implement get_{attribute}()')
 
     def get_queryset(self):
-        raise NotImplementedError('you must either set the queryset attribute or implement get_queryset()')
+        return self._default_get('queryset')
 
-    def get_year_start(self):
-        return 2008
+    def get_x_range(self):
+        return self._default_get('x_range')
 
-    def get_year_last(self):
-        return datetime.date.today().year
+    def get_field_labels(self):
+        return self._default_get('field_labels')
 
-    def filter_queryset_by_year(self, year, **kwargs):
+    def get_renderer_context(self):
+        context = super().get_renderer_context()
+        labels = self.get_field_labels()
+        if isinstance(labels, dict):
+            context['labels'] = labels
+            context['header'] = tuple(labels)
+        elif isinstance(labels, (tuple, list)):
+            context['header'] = labels
+        else:
+            raise TypeError('field_labels must be either dict or tuple')
+        return context
+
+    def get_x_name(self):
+        if hasattr(self, 'x_name'):
+            return self.x_name
+        else:
+            return list(self.get_field_labels())[0]
+
+    def filter_queryset_by_x(self, x, **kwargs):
         """
-        filter the queryset for a given year
+        filter the queryset for a given x-axis value
         """
-        raise NotImplementedError('function filter_queryset_by_year() must be implemented')
+        raise NotImplementedError('function filter_queryset_by_x() must be implemented')
 
-    def stats(self, filtered_qs, year, **kwargs):
+    def stats(self, filtered_qs, x, **kwargs):
         """
         return stats using a filtered queryset - should return a dict
         """
         raise NotImplementedError('function stats() must be implemented')
 
-    def iterate_over_years(self, **kwargs):
+    def x_to_str(self, x):
+        """
+        turn X axis value to label - can be overwritten if needed
+        """
+        return str(x)
+
+    def iterate_over_x(self, **kwargs):
         stats = [ ]
-        for year in self.year_range:
-            this = self.stats(self.filter_queryset_by_year(year, **kwargs), year, **kwargs)
-            this['year'] = year
+        for x in self.get_x_range():
+            this = self.stats(self.filter_queryset_by_x(x, **kwargs), x, **kwargs)
+            this[self.get_x_name()] = self.x_to_str(x)
             stats.append(this)
         return stats
 
-    def get_stats(self, **kwargs):
-        return self.iterate_over_years(**kwargs)
+    def get_stats(self, request, format):
+        return self.iterate_over_x()
 
     def get(self, request, format=None):
         return Response(self.get_stats(request=request, format=format), status=status.HTTP_200_OK)
+
+class PerYearStatsView(StatsView):
+    """
+    generic view for by-year stats
+    """
+
+    def get_year_start(self):
+        return self._default_get('year_start', 2008)
+
+    def get_year_last(self):
+        return self._default_get('year_last', datetime.date.today().year)
+
+    def get_x_range(self):
+        return range(self.get_year_start(), self.get_year_last() + 1)
 
 # these views are primarily for the EQAR website
 
@@ -119,26 +171,18 @@ class ApplicationPrecedentList(generics.ListAPIView):
 
 # following views are primarily for datawrapper.io charts
 
-@method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
 class ApplicationsTimeline(PerYearStatsView):
     """
     return number of applications and registered agencies by year
     """
-    permission_classes = [ ]
     queryset = Applications.objects.all()
-    year_start = 2008
-
-    def get_renderer_context(self):
-        context = super().get_renderer_context()
-        context['labels'] = {
+    field_labels = {
             'year': 'Year',
             'applications': 'Decisions on applications',
             'agencies': 'Registered agencies',
         }
-        context['header'] = tuple(context['labels'].keys())
-        return context
 
-    def filter_queryset_by_year(self, year, **kwargs):
+    def filter_queryset_by_x(self, year, **kwargs):
         return self.queryset.filter(decisionDate__year=year)
 
     def stats(self, filtered_qs, year, **kwargs):
@@ -146,167 +190,152 @@ class ApplicationsTimeline(PerYearStatsView):
         last = datetime.date(year, 12, 31)
         return({
             'applications': filtered_qs.count(),
-            'agencies': RegisteredAgency.objects.filter(registeredSince__lte=last, validUntil__gte=first).count() if year != self.year_last
+            'agencies': RegisteredAgency.objects.filter(registeredSince__lte=last, validUntil__gte=first).count() if year != self.get_year_last()
                         else RegisteredAgency.objects.filter(registered=True).count(),
         })
 
 
-@method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
-class ApplicationsTotals(views.APIView):
+class ApplicationsTotals(StatsView):
     """
     return application results by type
     """
-    permission_classes = [ ]
-
-    def get_renderer_context(self):
-        context = super().get_renderer_context()
-        context['labels'] = {
+    queryset = Applications.objects.filter(Q(stage='-- Withdrawn') | Q(stage='8. Completed'))
+    field_labels = {
             'result': 'Result',
             'initial': 'Initial applications',
             'renewal': 'Renewal applications',
         }
-        context['header'] = tuple(context['labels'].keys())
-        return context
 
-    def get(self, request, format=None):
-        stats = {}
-        for i in Applications.objects.filter(Q(stage='-- Withdrawn') | Q(stage='8. Completed')).values('result','type').annotate(n=Count('id')).order_by('result', 'type'):
-            if i['result'] in stats:
-                stats[i['result']][i['type']] = i['n']
-            else:
-                stats[i['result']] = { i['type']: i['n'] }
-        table = []
-        for i in stats:
-            if i:
-                table.append({
-                    'result': i,
-                    'initial': stats[i].get('Initial', 0),
-                    'renewal': stats[i].get('Renewal', 0),
-                })
-        return Response(table, status=status.HTTP_200_OK)
+    def get_x_range(self):
+        return [ i['result'] for i in self.get_queryset().order_by().values('result').distinct() ]
 
-@method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
-class ComplianceStats(views.APIView):
+    def filter_queryset_by_x(self, x, **kwargs):
+        return self.get_queryset().filter(result=x)
+
+    def stats(self, filtered_qs, x, **kwargs):
+        return {
+            'initial': filtered_qs.filter(type='Initial').count(),
+            'renewal': filtered_qs.filter(type='Renewal').count(),
+        }
+
+
+class ComplianceStats(StatsView):
     """
     show compliance by ESG standard
     """
-    permission_classes = [ ]
-
-    queryset = Applications.objects.filter(stage='8. Completed')
-
-    def get_renderer_context(self):
-        context = super().get_renderer_context()
-        context['header'] = (
+    queryset = ApplicationStandard.objects.filter(application__stage='8. Completed')
+    x_range = EsgStandard.objects.filter(version__active=True)
+    field_labels = (
             'standard',
             'Compliance',
             'Partial compliance',
             'Non-compliance',
         )
-        return context
 
-    def filtered_stats(self, **kwargs):
-        stats = []
-        for esg in EsgList():
-            this = { 'standard': str(esg) }
-            for count in self.queryset.exclude(**{f'{esg.rc}__isnull': True}).filter(**kwargs).values(esg.rc).annotate(n=Count('id')).order_by(esg.rc):
-                this[count[esg.rc]] = count['n']
-            stats.append(this)
+    def filter_queryset_by_x(self, esg, *args, **kwargs):
+        return self.get_queryset().filter(standard=esg, **kwargs)
+
+    def x_to_str(self, esg):
+        return esg.short_name
+
+    def stats(self, filtered_qs, esg, *args, **kwargs):
+        stats = {}
+        for compliance in ('Compliance', 'Partial compliance', 'Non-compliance'):
+            stats[compliance] = filtered_qs.filter(rc=compliance).count()
         return stats
 
-    def get(self, request, format=None):
-        return Response(self.filtered_stats(), status=status.HTTP_200_OK)
+
+class ComplianceExtendedStats(ComplianceStats):
+    """
+    show compliance by ESG standard, broken down by types, years and agencies
+    """
+    def __init__(self):
+        self.year_range = range(2016, self.get_queryset().aggregate(last=Max('application__decisionDate'))['last'].year)
+
+    def get_stats(self, **kwargs):
+        stats = {
+            'All': self.iterate_over_x()
+        }
+        for application_type in ('Initial', 'Renewal'):
+            stats[application_type] = self.iterate_over_x(application__type=application_type)
+        for result in ('Approved', 'Rejected'):
+            stats[result] = self.iterate_over_x(application__result=result)
+        for year in self.year_range:
+            stats[year] = self.iterate_over_x(application__decisionDate__year=year)
+        return stats
 
 
-@method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
-class ComplianceChangeStats(PerYearStatsView):
+class ComplianceChangeMixin:
+    """
+    common attributes and methods for stats on compliance-level change
+    """
+    queryset = ApplicationStandard.objects.filter(application__stage='8. Completed', panel__isnull=False, rc__isnull=False)
+    field_labels = {
+        'total': 'Total per-standard conclusions',
+        'downgrade': 'Conclusion downgraded',
+        'downgrade_share': 'Conclusion downgraded (percentage)',
+        'identical': 'Conclusion identical',
+        'identical_share': 'Conclusion identical (percentage)',
+        'upgrade': 'Conclusion upgraded',
+        'upgrade_share': 'Conclusion upgraded (percentage)',
+    }
+
+
+    Q_identical =   Q(rc=F('panel')) | \
+                    Q(panel='Full compliance', rc='Compliance') | \
+                    Q(panel='Substantial compliance', rc='Compliance')
+    Q_downgrade =   ( ( Q(panel='Compliance') | Q(panel='Full compliance') | Q(panel='Substantial compliance') ) & ~Q(rc='Compliance') ) | \
+                    Q(panel='Partial compliance', rc='Non-compliance')
+    Q_upgrade =     ( Q(panel='Non-compliance') & ~Q(rc='Non-compliance') ) | \
+                    Q(panel='Partial compliance', rc='Compliance')
+
+    def stats(self, filtered_qs, *args, **kwargs):
+        this = {
+            'total':        filtered_qs.count(),
+            'identical':    filtered_qs.filter(self.Q_identical).count(),
+            'downgrade':    filtered_qs.filter(self.Q_downgrade).count(),
+            'upgrade':      filtered_qs.filter(self.Q_upgrade).count(),
+        }
+        for i in ('identical','downgrade','upgrade'):
+            this[f'{i}_share'] = this[i] / this['total'] if this['total'] else 0
+        return this
+
+
+class ComplianceChangeStats(ComplianceChangeMixin, PerYearStatsView):
     """
     statistics on change to panel's conclusion per standard - by year
     """
-    permission_classes = [ ]
-
-    queryset = ApplicationStandard.objects.filter(application__stage='8. Completed', panel__isnull=False, rc__isnull=False)
     year_start = 2016
-
-    Q_identical = Q(rc=F('panel')) | Q(panel='Full compliance', rc='Compliance') | Q(panel='Substantial compliance', rc='Compliance')
-    Q_downgrade =   ( ( Q(panel='Compliance') | Q(panel='Full compliance') | Q(panel='Substantial compliance') ) & ~Q(rc='Compliance') ) | \
-                    Q(panel='Partial compliance', rc='Non-compliance')
-    Q_upgrade = ( Q(panel='Non-compliance') & ~Q(rc='Non-compliance') ) | Q(panel='Partial compliance', rc='Compliance')
+    field_labels = { 'year': 'Year', **ComplianceChangeMixin.field_labels }
 
     def get_year_last(self):
-        return self.queryset.aggregate(last=Max('application__decisionDate'))['last'].year
+        return self.get_queryset().aggregate(last=Max('application__decisionDate'))['last'].year
 
-    def get_renderer_context(self):
-        context = super().get_renderer_context()
-        context['labels'] = {
-            'year': 'Year',
-            'total': 'Conclusions total',
-            'downgrade': 'Conclusion downgraded',
-            'downgrade_share': 'Conclusion downgraded (percentage)',
-            'identical': 'Conclusion identical',
-            'identical_share': 'Conclusion identical (percentage)',
-            'upgrade': 'Conclusion upgraded',
-            'upgrade_share': 'Conclusion upgraded (percentage)',
-        }
-        context['header'] = tuple(context['labels'].keys())
-        return context
-
-    def filter_queryset_by_year(self, year, **kwargs):
-        return self.queryset.filter(application__decisionDate__year=year)
-
-    def stats(self, qs_year, year, **kwargs):
-        this = {
-            'total':        qs_year.count(),
-            'identical':    qs_year.filter(self.Q_identical).count(),
-            'downgrade':    qs_year.filter(self.Q_downgrade).count(),
-            'upgrade':      qs_year.filter(self.Q_upgrade).count(),
-        }
-        for i in ('identical','downgrade','upgrade'):
-            this[f'{i}_share'] = this[i] / this['total']
-        return this
+    def filter_queryset_by_x(self, year, **kwargs):
+        return self.get_queryset().filter(application__decisionDate__year=year)
 
 
-@method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
-class ComplianceChangePerStandardStats(views.APIView):
+class ComplianceChangePerStandardStats(ComplianceChangeMixin, StatsView):
     """
     statistics on change to panel's conclusion per standard - by standard
     """
-    permission_classes = [ ]
+    field_labels = { 'standard': 'Standard', **ComplianceChangeMixin.field_labels }
+    x_range = EsgStandard.objects.filter(version__active=True)
 
-    queryset = ApplicationStandard.objects.filter(application__stage='8. Completed', panel__isnull=False, rc__isnull=False)
+    def filter_queryset_by_x(self, esg, **kwargs):
+        return self.get_queryset().filter(standard=esg)
 
-    def get_renderer_context(self):
-        context = super().get_renderer_context()
-        context['labels'] = {
-            'standard': 'Standard',
-            'total': 'Applications total',
-            'downgrade': 'Conclusion downgraded',
-            'downgrade_share': 'Conclusion downgraded (percentage)',
-            'identical': 'Conclusion identical',
-            'identical_share': 'Conclusion identical (percentage)',
-            'upgrade': 'Conclusion upgraded',
-            'upgrade_share': 'Conclusion upgraded (percentage)',
-        }
-        context['header'] = tuple(context['labels'].keys())
-        return context
 
-    def stats(self, filtered_qs, **kwargs):
-        this = {
-            'total':        filtered_qs.count(),
-            'identical':    filtered_qs.filter(ComplianceChangeStats.Q_identical).count(),
-            'downgrade':    filtered_qs.filter(ComplianceChangeStats.Q_downgrade).count(),
-            'upgrade':      filtered_qs.filter(ComplianceChangeStats.Q_upgrade).count(),
-        }
-        for i in ('identical','downgrade','upgrade'):
-            this[f'{i}_share'] = this[i] / this['total']
-        return this
 
-    def get(self, request, format=None):
-        stats = [ ]
-        for esg in EsgStandard.objects.filter(version__active=True):
-            this = self.stats(self.queryset.filter(standard=esg))
-            this['standard'] = str(esg)
-            stats.append(this)
-        return Response(stats, status=status.HTTP_200_OK)
+class ApplicationStatsMixin:
+    """
+    common parameters for most rich application statistics
+    """
+    queryset = Applications.objects.filter(stage='8. Completed')
+    year_start = 2016
+
+    def get_year_last(self):
+        return self.queryset.aggregate(last=Max('decisionDate'))['last'].year
 
 
 @method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
@@ -371,16 +400,10 @@ class ApplicationsDuration(views.APIView):
         return Response(self.stats(request), status=status.HTTP_200_OK)
 
 
-@method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
-class ApplicationsDurationPerYear(PerYearStatsView):
+class ApplicationsDurationPerYear(ApplicationStatsMixin, PerYearStatsView):
     """
     return times between application, eligibility confirmation, report and decision
     """
-    permission_classes = [ ]
-
-    queryset = Applications.objects.filter(stage='8. Completed')
-    year_start = 2016
-
     zero_date = 'reportSubmitted'
     include_dates = [
         'submitDate',
@@ -390,9 +413,7 @@ class ApplicationsDurationPerYear(PerYearStatsView):
         'decisionDate',
     ]
 
-    def get_renderer_context(self):
-        context = super().get_renderer_context()
-        context['labels'] = {
+    field_labels = {
             'year': 'Year',
             'd_submitDate': 'Application submitted',
             'd_eligibilityDate': 'Eligibility confirmed',
@@ -401,8 +422,6 @@ class ApplicationsDurationPerYear(PerYearStatsView):
             'd_reportSubmitted': 'Report submitted',
             'd_decisionDate': 'RC decision',
         }
-        context['header'] = tuple(context['labels'].keys())
-        return context
 
     def get_year_last(self):
         return self.queryset.aggregate(last=Max('reportSubmitted'))['last'].year
@@ -412,7 +431,7 @@ class ApplicationsDurationPerYear(PerYearStatsView):
             b = self.zero_date
         return ExpressionWrapper(F(a)-F(b), output_field=DurationField())
 
-    def filter_queryset_by_year(self, year, **kwargs):
+    def filter_queryset_by_x(self, year, **kwargs):
         return self.queryset.filter(reportSubmitted__year=year)
 
     def stats(self, filtered_qs, year, **kwargs):
@@ -431,22 +450,11 @@ class ApplicationsDurationPerYear(PerYearStatsView):
         return values
 
 
-@method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
-class ClarificationRequestStats(PerYearStatsView):
+class ClarificationRequestStats(ApplicationStatsMixin, PerYearStatsView):
     """
     statistics on number of clarificaiton requests
     """
-    permission_classes = [ ]
-
-    queryset = Applications.objects.filter(stage='8. Completed')
-    year_start = 2016
-
-    def get_year_last(self):
-        return self.queryset.aggregate(last=Max('decisionDate'))['last'].year
-
-    def get_renderer_context(self):
-        context = super().get_renderer_context()
-        context['labels'] = {
+    field_labels = {
             'year': 'Year',
             'total': 'Applications total',
             'request_panel': 'Requests to panel',
@@ -458,10 +466,8 @@ class ClarificationRequestStats(PerYearStatsView):
             'request_other': 'Requests to others',
             'request_other_share': 'Requests to others (percentage)',
         }
-        context['header'] = tuple(context['labels'].keys())
-        return context
 
-    def filter_queryset_by_year(self, year, **kwargs):
+    def filter_queryset_by_x(self, year, **kwargs):
         return self.queryset.filter(decisionDate__year=year)
 
     def stats(self, qs_year, year, **kwargs):
@@ -478,54 +484,18 @@ class ClarificationRequestStats(PerYearStatsView):
 
 # following views are designed for Infogram/Prezi
 
-class ComplianceExtendedStats(ComplianceStats):
-    """
-    show compliance by ESG standard, broken down by types, years and agencies
-    """
-    permission_classes = [ ]
-
-    year_start = 2016
-
-    def __init__(self):
-        self.year_last = self.queryset.aggregate(last=Max('decisionDate'))['last'].year
-
-    def get(self, request, format=None):
-        stats = {
-            'All': self.filtered_stats()
-        }
-        for application_type in ('Initial', 'Renewal'):
-            stats[application_type] = self.filtered_stats(type=application_type)
-        for result in ('Approved', 'Rejected'):
-            stats[result] = self.filtered_stats(result=result)
-        for year in range(self.year_start, self.year_last + 1):
-            stats[year] = self.filtered_stats(decisionDate__year=year)
-
-        return Response(stats, status=status.HTTP_200_OK)
-
-
-class ComplianceTimelineByStandard(PerYearStatsView):
+class ComplianceTimelineByStandard(ApplicationStatsMixin, PerYearStatsView):
     """
     show compliance by year for each ESG standard
     """
-    permission_classes = [ ]
-
-    queryset = Applications.objects.filter(stage='8. Completed')
-    year_start = 2016
-
-    def get_year_last(self):
-        return self.queryset.aggregate(last=Max('decisionDate'))['last'].year
-
-    def get_renderer_context(self):
-        context = super().get_renderer_context()
-        context['header'] = (
+    field_labels = (
             'year',
             'Compliance',
             'Partial compliance',
             'Non-compliance',
         )
-        return context
 
-    def filter_queryset_by_year(self, year, **kwargs):
+    def filter_queryset_by_x(self, year, **kwargs):
         return self.queryset.filter(decisionDate__year=year)
 
     def stats(self, filtered_qs, year, esg, **kwargs):
@@ -537,5 +507,5 @@ class ComplianceTimelineByStandard(PerYearStatsView):
     def get_stats(self, **kwargs):
         stats = { }
         for esg in EsgList():
-            stats[str(esg)] = self.iterate_over_years(esg=esg, **kwargs)
+            stats[str(esg)] = self.iterate_over_x(esg=esg, **kwargs)
         return stats
