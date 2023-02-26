@@ -14,6 +14,8 @@ urlpatterns.add_url(r'esg/extended', ComplianceExtendedStats)
 urlpatterns.add_url(r'esg/timeline-by-standard', ComplianceTimelineByStandard)
 urlpatterns.add_url(r'esg/compliance-changed/by-year', ComplianceChangeStats)
 urlpatterns.add_url(r'esg/compliance-changed/by-standard', ComplianceChangePerStandardStats)
+urlpatterns.add_url(r'esg/compliance-changed/by-panel', ComplianceChangePerPanelStats)
+urlpatterns.add_url(r'esg/compliance-changed/by-rapporteur', ComplianceChangePerRapporteurStats)
 
 urlpatterns.add_url(r'applications/open', OpenApplications)
 urlpatterns.add_url(r'applications/withdrawn', WithdrawnApplications)
