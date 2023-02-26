@@ -104,11 +104,13 @@ class StatsView(views.APIView):
             stats.append(this)
         return stats
 
-    def get_stats(self, request, format):
+    def get_stats(self):
         return self.iterate_over_x()
 
     def get(self, request, format=None):
-        return Response(self.get_stats(request=request, format=format), status=status.HTTP_200_OK)
+        self.request = request
+        self.format = format
+        return Response(self.get_stats(), status=status.HTTP_200_OK)
 
 class PerYearStatsView(StatsView):
     """
@@ -232,7 +234,7 @@ class ComplianceStats(StatsView):
             'Non-compliance',
         )
 
-    def filter_queryset_by_x(self, esg, *args, **kwargs):
+    def filter_queryset_by_x(self, esg, **kwargs):
         return self.get_queryset().filter(standard=esg, **kwargs)
 
     def x_to_str(self, esg):
@@ -279,7 +281,6 @@ class ComplianceChangeMixin:
         'upgrade': 'Conclusion upgraded',
         'upgrade_share': 'Conclusion upgraded (percentage)',
     }
-
 
     Q_identical =   Q(rc=F('panel')) | \
                     Q(panel='Full compliance', rc='Compliance') | \
@@ -342,7 +343,7 @@ class ComplianceChangePerPanelStats(ComplianceChangeMixin, StatsView):
                     )
                 ).filter(review_count__gte=4)
 
-    def filter_queryset_by_x(self, contact, *args, **kwargs):
+    def filter_queryset_by_x(self, contact, **kwargs):
         return self.get_queryset().filter(application__roles=contact)
 
 
@@ -353,7 +354,7 @@ class ComplianceChangePerRapporteurStats(ComplianceChangeMixin, StatsView):
     field_labels = { 'person': 'RC rapporteur', **ComplianceChangeMixin.field_labels }
     x_range = Contact.objects.filter(organisation=48, contactorganisation__function__startswith='RC')
 
-    def filter_queryset_by_x(self, contact, *args, **kwargs):
+    def filter_queryset_by_x(self, contact, **kwargs):
         return self.get_queryset().filter(Q(application__rapporteur1=contact) | Q(application__rapporteur2=contact))
 
 
@@ -368,29 +369,21 @@ class ApplicationStatsMixin:
         return self.queryset.aggregate(last=Max('decisionDate'))['last'].year
 
 
-@method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
-class ApplicationsDuration(views.APIView):
+class ApplicationDurationMixin:
     """
-    return times between application, eligibility confirmation, report and decision
+    calculate times between application, eligibility confirmation, report and decision
     """
-    permission_classes = [ ]
-
-    queryset = Applications.objects.filter(stage='8. Completed')
-
-    default_limit = 10
-    name_expression = 'selectName'
     zero_date = 'reportDate'
     include_dates = [
         'submitDate',
         'eligibilityDate',
         'sitevisitDate',
+        'reportDate',
         'reportSubmitted',
         'decisionDate',
     ]
 
-    def get_renderer_context(self):
-        context = super().get_renderer_context()
-        context['labels'] = {
+    field_labels = {
             'label': 'Application',
             'd_submitDate': 'Application submitted',
             'd_eligibilityDate': 'Eligibility confirmed',
@@ -399,85 +392,61 @@ class ApplicationsDuration(views.APIView):
             'd_reportSubmitted': 'Report submitted',
             'd_decisionDate': 'RC decision',
         }
-        context['header'] = tuple(context['labels'].keys())
-        return context
 
     def _timedelta(self, a, b=None):
         if b is None:
             b = self.zero_date
         return ExpressionWrapper(F(a)-F(b), output_field=DurationField())
-
-    def stats(self, request):
-        # limit to the X latest cases
-        limit = int(request.query_params.get('limit', self.default_limit))
-        qs = self.queryset[0:limit]
-        # generate annotation expressions for timedeltas
-        annotate_kwargs = { 'label': F(self.name_expression) }
-        for date in self.include_dates:
-            annotate_kwargs[f'd_{date}'] = self._timedelta(date)
-        # run query and transform values to ordinary list
-        values = list(qs.annotate(**annotate_kwargs).values(*(['label'] + [ f'd_{date}' for date in self.include_dates ])))
-        # convert timedeltas to days
-        for v in values:
-            for date in self.include_dates:
-                if v[f'd_{date}'] is not None:
-                    v[f'd_{date}'] = v[f'd_{date}'].days
-            v[f'd_{self.zero_date}'] = 0
-
-        return values
-
-    def get(self, request, format=None):
-        return Response(self.stats(request), status=status.HTTP_200_OK)
-
-
-class ApplicationsDurationPerYear(ApplicationStatsMixin, PerYearStatsView):
-    """
-    return times between application, eligibility confirmation, report and decision
-    """
-    zero_date = 'reportSubmitted'
-    include_dates = [
-        'submitDate',
-        'eligibilityDate',
-        'sitevisitDate',
-        'reportDate',
-        'decisionDate',
-    ]
-
-    field_labels = {
-            'year': 'Year',
-            'd_submitDate': 'Application submitted',
-            'd_eligibilityDate': 'Eligibility confirmed',
-            'd_sitevisitDate': 'Site-visit date',
-            'd_reportDate': 'Report date',
-            'd_reportSubmitted': 'Report submitted',
-            'd_decisionDate': 'RC decision',
-        }
-
-    def get_year_last(self):
-        return self.queryset.aggregate(last=Max('reportSubmitted'))['last'].year
-
-    def _timedelta(self, a, b=None):
-        if b is None:
-            b = self.zero_date
-        return ExpressionWrapper(F(a)-F(b), output_field=DurationField())
-
-    def filter_queryset_by_x(self, year, **kwargs):
-        return self.queryset.filter(reportSubmitted__year=year)
 
     def stats(self, filtered_qs, year, **kwargs):
         # generate annotation expressions for timedeltas
         aggregate_kwargs = { }
         for date in self.include_dates:
-            aggregate_kwargs[f'd_{date}'] = Avg(self._timedelta(date))
+            if date != self.zero_date:
+                aggregate_kwargs[f'd_{date}'] = Avg(self._timedelta(date))
         # run query and transform values to ordinary list
         values = filtered_qs.aggregate(**aggregate_kwargs)
+        values[f'd_{self.zero_date}'] = 0
         # convert timedeltas to days
         for date in self.include_dates:
-            if values[f'd_{date}'] is not None:
+            if isinstance(values[f'd_{date}'], datetime.timedelta):
                 values[f'd_{date}'] = values[f'd_{date}'].days
-            values[f'd_{self.zero_date}'] = 0
-
         return values
+
+
+class ApplicationsDuration(ApplicationDurationMixin, StatsView):
+    """
+    duration for X latest applications
+    """
+    queryset = Applications.objects.exclude(Q(stage__lte='2. Waiting report') | Q(stage='-- Withdrawn')).order_by('-reportSubmitted')
+    default_limit = 10
+    zero_date = 'reportSubmitted'
+    field_labels = { 'label': 'Application', **ApplicationDurationMixin.field_labels }
+
+    def get_x_range(self):
+        # limit to the X latest cases
+        limit = int(self.request.query_params.get('limit', self.default_limit))
+        return self.get_queryset()[0:limit]
+
+    def filter_queryset_by_x(self, application, **kwargs):
+        return self.get_queryset().filter(pk=application.pk)
+
+    def x_to_str(self, application):
+        return(f'{application.reportSubmitted} {application.agency} (A{application.id} {application.type}, {application.review})')
+
+
+class ApplicationsDurationPerYear(ApplicationDurationMixin, ApplicationStatsMixin, PerYearStatsView):
+    """
+    return times between application, eligibility confirmation, report and decision
+    """
+    zero_date = 'reportSubmitted'
+    field_labels = { 'year': 'Year', **ApplicationDurationMixin.field_labels }
+
+    def get_year_last(self):
+        return self.get_queryset().aggregate(last=Max('reportSubmitted'))['last'].year
+
+    def filter_queryset_by_x(self, year, **kwargs):
+        return self.get_queryset().filter(reportSubmitted__year=year)
 
 
 class ClarificationRequestStats(ApplicationStatsMixin, PerYearStatsView):
@@ -498,7 +467,7 @@ class ClarificationRequestStats(ApplicationStatsMixin, PerYearStatsView):
         }
 
     def filter_queryset_by_x(self, year, **kwargs):
-        return self.queryset.filter(decisionDate__year=year)
+        return self.get_queryset().filter(decisionDate__year=year)
 
     def stats(self, qs_year, year, **kwargs):
         this = {
