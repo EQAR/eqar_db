@@ -36,9 +36,9 @@ class AgencyViewSet(UniModelViewSet):
 
 class ApplicationViewSet(UniModelViewSet):
     queryset = Applications.objects.all()
-    list_fields = [ 'agency', 'type', 'submitDate', 'stage', 'rapporteur1', 'rapporteur2', 'secretary' ]
+    list_fields = [ 'agency', 'type', 'review', 'submitDate', 'stage', 'rapporteur1', 'rapporteur2', 'secretary', 'result' ]
     search_fields = [ 'agency__shortname', 'agency__organisation__longname' ]
-    filterset_fields = [ 'type', 'result', 'stage', 'agency', 'secretary' ]
+    filterset_fields = [ 'type', 'review', 'stage', 'agency', 'secretary', 'result' ]
     relations_count = (
         'applicationclarification_set',
         'applicationinterest_set',
