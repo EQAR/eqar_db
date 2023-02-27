@@ -24,5 +24,6 @@ urlpatterns.add_url(r'applications/totals', ApplicationsTotals)
 urlpatterns.add_url(r'applications/duration/latest', ApplicationsDuration)
 urlpatterns.add_url(r'applications/duration/by-year', ApplicationsDurationPerYear)
 urlpatterns.add_url(r'applications/precedents', ApplicationPrecedentList)
-urlpatterns.add_url(r'applications/clarification-requests', ClarificationRequestStats)
+urlpatterns.add_url(r'applications/clarification-requests/by-year', ClarificationRequestsByYearStats)
+urlpatterns.add_url(r'applications/clarification-requests/by-standard', ClarificationRequestsByStandardStats)
 

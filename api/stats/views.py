@@ -360,14 +360,21 @@ class ComplianceChangePerRapporteurStats(ComplianceChangeMixin, StatsView):
 
 class ApplicationStatsMixin:
     """
-    common parameters for most rich application statistics
+    common queryset for most application statistics
     """
     queryset = Applications.objects.filter(stage='8. Completed')
+
+class ApplicationByYearMixin:
+    """
+    common parameters for rich year-by-year stats on applications
+    """
     year_start = 2016
 
     def get_year_last(self):
-        return self.queryset.aggregate(last=Max('decisionDate'))['last'].year
+        return self.get_queryset().aggregate(last=Max('decisionDate'))['last'].year
 
+    def filter_queryset_by_x(self, year, **kwargs):
+        return self.get_queryset().filter(decisionDate__year=year)
 
 class ApplicationDurationMixin:
     """
@@ -435,7 +442,7 @@ class ApplicationsDuration(ApplicationDurationMixin, StatsView):
         return(f'{application.reportSubmitted} {application.agency} (A{application.id} {application.type}, {application.review})')
 
 
-class ApplicationsDurationPerYear(ApplicationDurationMixin, ApplicationStatsMixin, PerYearStatsView):
+class ApplicationsDurationPerYear(ApplicationDurationMixin, ApplicationStatsMixin, ApplicationByYearMixin, PerYearStatsView):
     """
     return times between application, eligibility confirmation, report and decision
     """
@@ -449,12 +456,11 @@ class ApplicationsDurationPerYear(ApplicationDurationMixin, ApplicationStatsMixi
         return self.get_queryset().filter(reportSubmitted__year=year)
 
 
-class ClarificationRequestStats(ApplicationStatsMixin, PerYearStatsView):
+class ClarificationRequestStatsMixin:
     """
     statistics on number of clarificaiton requests
     """
     field_labels = {
-            'year': 'Year',
             'total': 'Applications total',
             'request_panel': 'Requests to panel',
             'request_panel_share': 'Requests to panel (percentage)',
@@ -466,24 +472,48 @@ class ClarificationRequestStats(ApplicationStatsMixin, PerYearStatsView):
             'request_other_share': 'Requests to others (percentage)',
         }
 
-    def filter_queryset_by_x(self, year, **kwargs):
-        return self.get_queryset().filter(decisionDate__year=year)
-
-    def stats(self, qs_year, year, **kwargs):
+    def stats(self, filtered_qs, x, **kwargs):
         this = {
-            'total':                qs_year.count(),
-            'request_panel':        qs_year.filter(applicationclarification__type='Panel').distinct().count(),
-            'request_coordinator':  qs_year.filter(applicationclarification__type='Coordinator').distinct().count(),
-            'request_agency':       qs_year.filter(applicationclarification__type='Agency').distinct().count(),
-            'request_other':        qs_year.filter(applicationclarification__type='Other').distinct().count(),
+            'total':                filtered_qs.count(),
+            'request_panel':        filtered_qs.filter(applicationclarification__type='Panel', **kwargs).distinct().count(),
+            'request_coordinator':  filtered_qs.filter(applicationclarification__type='Coordinator', **kwargs).distinct().count(),
+            'request_agency':       filtered_qs.filter(applicationclarification__type='Agency', **kwargs).distinct().count(),
+            'request_other':        filtered_qs.filter(applicationclarification__type='Other', **kwargs).distinct().count(),
         }
         for t in ('panel','coordinator','agency','other'):
             this[f'request_{t}_share'] = this[f'request_{t}'] / this['total']
         return this
 
+
+class ClarificationRequestsByYearStats(ClarificationRequestStatsMixin, ApplicationStatsMixin, ApplicationByYearMixin, PerYearStatsView):
+    """
+    clarificaiton requests - by year
+    """
+    field_labels = { 'year': 'Year', **ClarificationRequestStatsMixin.field_labels }
+
+
+class ClarificationRequestsByStandardStats(ClarificationRequestStatsMixin, ApplicationStatsMixin, StatsView):
+    """
+    clarificaiton requests - by ESG
+    """
+    field_labels = { 'standard': 'ESG', **ClarificationRequestStatsMixin.field_labels }
+
+    x_range = EsgStandard.objects.filter(version__active=True)
+
+    def filter_queryset_by_x(self, esg, **kwargs):
+        return self.get_queryset()
+
+    def x_to_str(self, esg):
+        return esg.short_name
+
+    def stats(self, filtered_qs, esg, **kwargs):
+        filter_kwargs = { f'applicationclarification__esg_{esg.attribute_name}': True }
+        return super().stats(filtered_qs, esg, **filter_kwargs)
+
+
 # following views are designed for Infogram/Prezi
 
-class ComplianceTimelineByStandard(ApplicationStatsMixin, PerYearStatsView):
+class ComplianceTimelineByStandard(ApplicationStatsMixin, ApplicationByYearMixin, PerYearStatsView):
     """
     show compliance by year for each ESG standard
     """
@@ -493,9 +523,6 @@ class ComplianceTimelineByStandard(ApplicationStatsMixin, PerYearStatsView):
             'Partial compliance',
             'Non-compliance',
         )
-
-    def filter_queryset_by_x(self, year, **kwargs):
-        return self.queryset.filter(decisionDate__year=year)
 
     def stats(self, filtered_qs, year, esg, **kwargs):
         this = { }
