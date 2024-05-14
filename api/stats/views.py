@@ -252,7 +252,7 @@ class ComplianceExtendedStats(ComplianceStats):
     show compliance by ESG standard, broken down by types, years and agencies
     """
     def __init__(self):
-        self.year_range = range(2016, self.get_queryset().aggregate(last=Max('application__decisionDate'))['last'].year)
+        self.year_range = range(2016, self.get_queryset().aggregate(last=Max('application__decisionDate'))['last'].year + 1)
 
     def get_stats(self, **kwargs):
         stats = {
