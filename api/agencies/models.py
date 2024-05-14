@@ -262,6 +262,8 @@ class Applications(models.Model):
                 setattr(self, f'panel_{esg.attribute_name}', getattr(self.previous, f'panel_{esg.attribute_name}'))
                 setattr(self, f'rapp_{esg.attribute_name}', getattr(self.previous, f'rapp_{esg.attribute_name}'))
                 setattr(self, f'rc_{esg.attribute_name}', getattr(self.previous, f'rc_{esg.attribute_name}'))
+        super().save(*args, **kwargs)
+        for esg in EsgVersion.objects.get(active=True).esgstandard_set.all():
             if getattr(self, f'panel_{esg.attribute_name}') or getattr(self, f'rapp_{esg.attribute_name}') or getattr(self, f'rc_{esg.attribute_name}'):
                 ApplicationStandard.objects.update_or_create(
                     application=self,
@@ -272,7 +274,6 @@ class Applications(models.Model):
                         rc=getattr(self, f'rc_{esg.attribute_name}')
                     )
                 )
-        super().save(*args, **kwargs)
 
     def get_readonly_fields(self):
         readonly_fields = [ 'previous' ]
