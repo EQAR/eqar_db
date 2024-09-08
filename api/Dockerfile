@@ -1,7 +1,7 @@
 FROM python:3.8-slim
 
-ENV PYTHONUNBUFFERED 1
-ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 
 RUN mkdir /eqar_db
 WORKDIR /eqar_db
@@ -20,8 +20,4 @@ ADD . /eqar_db
 
 RUN mkdir -p /eqar_db/static
 
-CMD bash -c "python manage.py collectstatic --noinput && \
-	python manage.py wait_for_database && \
-	python manage.py migrate --fake-initial && \
-	gunicorn eqar_db.wsgi"
-
+CMD [ "/bin/bash", "-c", "python manage.py collectstatic --noinput && python manage.py wait_for_database && python manage.py migrate --fake-initial && gunicorn eqar_db.wsgi" ]
