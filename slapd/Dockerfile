@@ -4,7 +4,7 @@ FROM --platform=linux/amd64 ubuntu:latest
 # Install slapd & netcat, empty the default configuration
 RUN apt-get -y update && \
 	echo "slapd slapd/no_configuration boolean true" | debconf-set-selections && \
-	apt-get install -y slapd odbc-mariadb netcat && \
+	apt-get install -y slapd odbc-mariadb netcat-openbsd && \
 	apt-get clean && \
 	rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
 	rm -rf /etc/ldap/slapd.d /var/lib/ldap
