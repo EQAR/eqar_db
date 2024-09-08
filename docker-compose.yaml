@@ -12,6 +12,8 @@ services:
       - DJANGO_DB_NAME=eqar
       - DJANGO_DB_USER=eqar
       - PORT=8000
+      - DEQAR_BASE
+      - DEQAR_TOKEN
     volumes:
       - staticfiles:/eqar_db/static
 
