@@ -6,5 +6,6 @@ settings_local.py
 /api/agencies/deqarclient.py
 /initdb.d/0001_eqar.sql
 /env/
+/.claude/
 .env
 !.gitignore
