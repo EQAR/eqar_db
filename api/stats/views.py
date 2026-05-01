@@ -7,7 +7,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_control
 
 from rest_framework import generics, status, views, viewsets, permissions, serializers
-from rest_framework.renderers import JSONRenderer
+from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
 from rest_framework.response import Response
 from rest_framework.filters import SearchFilter, OrderingFilter
 
@@ -180,7 +180,7 @@ class StatsView(DateRangeFilterMixin, views.APIView):
         # client actually sees the error message. Same applies to InfogramJSONRenderer,
         # which would tabulate the error dict into an unhelpful table-of-error.
         response = super().finalize_response(request, response, *args, **kwargs)
-        if response.status_code >= 400 and getattr(response.accepted_renderer, 'format', None) != 'json':
+        if response.status_code >= 400 and not isinstance(response.accepted_renderer, (JSONRenderer, BrowsableAPIRenderer)):
             response.accepted_renderer = JSONRenderer()
             response.accepted_media_type = 'application/json'
         return response
