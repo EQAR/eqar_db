@@ -23,12 +23,76 @@ from agencies.models import \
 from stats.helpers import Esg, EsgList
 from stats.serializers import ApplicationsListSerializer, ApplicationStandardListSerializer
 
-from rest_framework import pagination
-
 # toolbox
 
+APPLICATION_DATE_FIELDS = [
+    'submitDate',
+    'eligibilityDate',
+    'sitevisitDate',
+    'reportDate',
+    'reportSubmitted',
+    'decisionDate',
+]
+
+
+class DateRangeFilterMixin:
+    """
+    Apply ?date_from / ?date_to / ?date_field query params to the queryset.
+
+    Subclass declares:
+      date_filter_fields        - list of public field names accepted via ?date_field
+      date_filter_field_prefix  - ORM prefix prepended to the chosen name (e.g. 'application__')
+      date_filter_default       - public name used when ?date_field is omitted; falls back to fields[0]
+
+    Empty date_filter_fields = mixin is a no-op.
+    """
+    date_filter_fields = []
+    date_filter_field_prefix = ''
+    date_filter_default = None
+
+    def _parse_date(self, name):
+        raw = self.request.query_params.get(name)
+        if raw is None:
+            return None
+        try:
+            return datetime.date.fromisoformat(raw)
+        except ValueError:
+            raise serializers.ValidationError({name: 'must be ISO date YYYY-MM-DD'})
+
+    def get_active_date_field(self):
+        if not self.date_filter_fields:
+            return None
+        chosen = self.request.query_params.get(
+            'date_field', self.date_filter_default or self.date_filter_fields[0])
+        if chosen not in self.date_filter_fields:
+            raise serializers.ValidationError({
+                'date_field': f"must be one of: {', '.join(self.date_filter_fields)}"
+            })
+        return f"{self.date_filter_field_prefix}{chosen}"
+
+    def get_queryset(self):
+        qs = self._default_get('queryset')
+        field = self.get_active_date_field()
+        if field is None:
+            return qs
+        df = self._parse_date('date_from')
+        dt = self._parse_date('date_to')
+        if df:
+            qs = qs.filter(**{f'{field}__gte': df})
+        if dt:
+            qs = qs.filter(**{f'{field}__lte': dt})
+        return qs
+
+    def _resolve_year_last(self, default):
+        """If ?date_to is set, the filter window defines the year-axis end (even
+        past the data extent — empty buckets are emitted as zero). Otherwise
+        the caller-supplied default (often a data-derived ceiling) is used."""
+        dt = self._parse_date('date_to')
+        return dt.year if dt else default
+
+
 @method_decorator(cache_control(max_age=settings.STATS_CACHE_MAX_AGE), name='dispatch')
-class StatsView(views.APIView):
+class StatsView(DateRangeFilterMixin, views.APIView):
     """
     Generic view for stats
 
@@ -50,9 +114,6 @@ class StatsView(views.APIView):
             return default
         else:
             raise NotImplementedError(f'you must either set the {attribute} attribute or implement get_{attribute}()')
-
-    def get_queryset(self):
-        return self._default_get('queryset')
 
     def get_x_range(self):
         return self._default_get('x_range')
@@ -115,13 +176,19 @@ class StatsView(views.APIView):
 class PerYearStatsView(StatsView):
     """
     generic view for by-year stats
+
+    Year-axis range is clamped to the calendar years touched by ?date_from / ?date_to:
+    years outside the window are dropped, years inside it with no matching data still
+    appear as zero-count rows.
     """
 
     def get_year_start(self):
-        return self._default_get('year_start', 2008)
+        df = self._parse_date('date_from')
+        return df.year if df else self._default_get('year_start', 2008)
 
     def get_year_last(self):
-        return self._default_get('year_last', datetime.date.today().year)
+        return self._resolve_year_last(
+            self._default_get('year_last', datetime.date.today().year))
 
     def get_x_range(self):
         return range(self.get_year_start(), self.get_year_last() + 1)
@@ -178,6 +245,8 @@ class ApplicationsTimeline(PerYearStatsView):
     return number of applications and registered agencies by year
     """
     queryset = Applications.objects.all()
+    date_filter_fields = APPLICATION_DATE_FIELDS
+    date_filter_default = 'decisionDate'
     field_labels = {
             'year': 'Year',
             'applications': 'Decisions on applications',
@@ -185,7 +254,7 @@ class ApplicationsTimeline(PerYearStatsView):
         }
 
     def filter_queryset_by_x(self, year, **kwargs):
-        return self.queryset.filter(decisionDate__year=year)
+        return self.get_queryset().filter(decisionDate__year=year)
 
     def stats(self, filtered_qs, year, **kwargs):
         first = datetime.date(year, 1, 1)
@@ -202,6 +271,8 @@ class ApplicationsTotals(StatsView):
     return application results by type
     """
     queryset = Applications.objects.filter(Q(stage='-- Withdrawn') | Q(stage='8. Completed'))
+    date_filter_fields = APPLICATION_DATE_FIELDS
+    date_filter_default = 'decisionDate'
     field_labels = {
             'result': 'Result',
             'initial': 'Initial applications',
@@ -226,6 +297,9 @@ class ComplianceStats(StatsView):
     show compliance by ESG standard
     """
     queryset = ApplicationStandard.objects.filter(application__stage='8. Completed')
+    date_filter_fields = APPLICATION_DATE_FIELDS
+    date_filter_field_prefix = 'application__'
+    date_filter_default = 'decisionDate'
     x_range = EsgStandard.objects.filter(version__active=True)
     field_labels = (
             'standard',
@@ -251,10 +325,10 @@ class ComplianceExtendedStats(ComplianceStats):
     """
     show compliance by ESG standard, broken down by types, years and agencies
     """
-    def __init__(self):
-        self.year_range = range(2016, self.get_queryset().aggregate(last=Max('application__decisionDate'))['last'].year + 1)
-
     def get_stats(self, **kwargs):
+        last = self.get_queryset().aggregate(last=Max('application__decisionDate'))['last']
+        last_year = last.year if last else datetime.date.today().year
+        year_range = range(2016, self._resolve_year_last(last_year) + 1)
         stats = {
             'All': self.iterate_over_x()
         }
@@ -262,7 +336,7 @@ class ComplianceExtendedStats(ComplianceStats):
             stats[application_type] = self.iterate_over_x(application__type=application_type)
         for result in ('Approved', 'Rejected'):
             stats[result] = self.iterate_over_x(application__result=result)
-        for year in self.year_range:
+        for year in year_range:
             stats[year] = self.iterate_over_x(application__decisionDate__year=year)
         return stats
 
@@ -272,6 +346,9 @@ class ComplianceChangeMixin:
     common attributes and methods for stats on compliance-level change
     """
     queryset = ApplicationStandard.objects.filter(application__stage='8. Completed', panel__isnull=False, rc__isnull=False)
+    date_filter_fields = APPLICATION_DATE_FIELDS
+    date_filter_field_prefix = 'application__'
+    date_filter_default = 'decisionDate'
     field_labels = {
         'total': 'Total per-standard conclusions',
         'downgrade': 'Conclusion downgraded',
@@ -310,7 +387,8 @@ class ComplianceChangeStats(ComplianceChangeMixin, PerYearStatsView):
     field_labels = { 'year': 'Year', **ComplianceChangeMixin.field_labels }
 
     def get_year_last(self):
-        return self.get_queryset().aggregate(last=Max('application__decisionDate'))['last'].year
+        last = self.get_queryset().aggregate(last=Max('application__decisionDate'))['last']
+        return self._resolve_year_last(last.year if last else datetime.date.today().year)
 
     def filter_queryset_by_x(self, year, **kwargs):
         return self.get_queryset().filter(application__decisionDate__year=year)
@@ -369,9 +447,12 @@ class ApplicationByYearMixin:
     common parameters for rich year-by-year stats on applications
     """
     year_start = 2016
+    date_filter_fields = APPLICATION_DATE_FIELDS
+    date_filter_default = 'decisionDate'
 
     def get_year_last(self):
-        return self.get_queryset().aggregate(last=Max('decisionDate'))['last'].year
+        last = self.get_queryset().aggregate(last=Max('decisionDate'))['last']
+        return self._resolve_year_last(last.year if last else datetime.date.today().year)
 
     def filter_queryset_by_x(self, year, **kwargs):
         return self.get_queryset().filter(decisionDate__year=year)
@@ -426,6 +507,8 @@ class ApplicationsDuration(ApplicationDurationMixin, StatsView):
     duration for X latest applications
     """
     queryset = Applications.objects.exclude(Q(stage__lte='2. Waiting report') | Q(stage='-- Withdrawn')).order_by('-reportSubmitted')
+    date_filter_fields = APPLICATION_DATE_FIELDS
+    date_filter_default = 'reportSubmitted'
     default_limit = 10
     zero_date = 'reportSubmitted'
     field_labels = { 'label': 'Application', **ApplicationDurationMixin.field_labels }
@@ -447,10 +530,12 @@ class ApplicationsDurationPerYear(ApplicationDurationMixin, ApplicationStatsMixi
     return times between application, eligibility confirmation, report and decision
     """
     zero_date = 'reportSubmitted'
+    date_filter_default = 'reportSubmitted'
     field_labels = { 'year': 'Year', **ApplicationDurationMixin.field_labels }
 
     def get_year_last(self):
-        return self.get_queryset().aggregate(last=Max('reportSubmitted'))['last'].year
+        last = self.get_queryset().aggregate(last=Max('reportSubmitted'))['last']
+        return self._resolve_year_last(last.year if last else datetime.date.today().year)
 
     def filter_queryset_by_x(self, year, **kwargs):
         return self.get_queryset().filter(reportSubmitted__year=year)
@@ -496,6 +581,8 @@ class ClarificationRequestsByStandardStats(ClarificationRequestStatsMixin, Appli
     """
     clarificaiton requests - by ESG
     """
+    date_filter_fields = APPLICATION_DATE_FIELDS
+    date_filter_default = 'decisionDate'
     field_labels = { 'standard': 'ESG', **ClarificationRequestStatsMixin.field_labels }
 
     x_range = EsgStandard.objects.filter(version__active=True)
