@@ -1,0 +1,28 @@
+# Direct dependencies for the Django backend.
+# Compile with:  pip-compile requirements.in
+#
+# Django 3.1 is a hard ceiling — moving to 4.x would require migration work
+# (USE_L10N removal, default auto-field, etc.).
+Django<4
+
+# Django ecosystem
+djangorestframework
+djangorestframework-csv
+django-auth-ldap
+django-cors-headers
+django-filter
+django-probes
+django-split-settings
+drf-yasg
+
+# Database / server
+mysqlclient
+gunicorn
+
+# LDAP (used directly in eqar_db/settings_base.py)
+python-ldap
+
+# Domain libraries
+deqarclient
+phonenumbers
+lxml
