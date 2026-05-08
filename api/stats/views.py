@@ -308,7 +308,7 @@ class ComplianceStats(StatsView):
     """
     show compliance by ESG standard
     """
-    queryset = ApplicationStandard.objects.filter(application__stage='8. Completed')
+    queryset = ApplicationStandard.objects.filter(application__stage__in=['8. Completed', '-- Withdrawn'])
     date_filter_fields = APPLICATION_DATE_FIELDS
     date_filter_field_prefix = 'application__'
     date_filter_default = 'decisionDate'
