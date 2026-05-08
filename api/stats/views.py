@@ -452,7 +452,7 @@ class ApplicationStatsMixin:
     """
     common queryset for most application statistics
     """
-    queryset = Applications.objects.filter(stage='8. Completed')
+    queryset = Applications.objects.filter(Q(stage='-- Withdrawn') | Q(stage='8. Completed'))
 
 class ApplicationByYearMixin:
     """
